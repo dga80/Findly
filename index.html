@@ -42,7 +42,10 @@
 
             <div class="actions">
                 <button id="searchBtn" class="btn-primary">Buscar Stock</button>
-                <button id="exportBtn" class="btn-secondary" disabled>Exportar a Excel</button>
+                <div class="export-actions">
+                    <button id="exportStockBtn" class="btn-secondary" disabled>Exportar Stock</button>
+                    <button id="exportPurchaseBtn" class="btn-purchase" disabled>Exportar Compra</button>
+                </div>
             </div>
         </section>
 
@@ -81,7 +84,15 @@
                 </div>
 
                 <div class="result-card purchase-card">
-                    <h2>🛒 Listado de Compra</h2>
+                    <h2>
+                        <svg class="icon-basket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 10V4a2 2 0 012-2h8a2 2 0 012 2v6" />
+                            <path d="M21 15H3l2-5h14l2 5z" />
+                            <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4" />
+                            <path d="M12 11v10" />
+                        </svg>
+                        Listado de Compra
+                    </h2>
                     <div class="table-container">
                         <table id="purchaseTable">
                             <thead>

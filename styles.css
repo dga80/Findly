@@ -80,11 +80,19 @@ textarea:focus {
 
 .actions {
     display: flex;
+    flex-direction: column;
     gap: 1rem;
 }
 
+.export-actions {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-purchase {
     padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 0.5rem;
@@ -92,12 +100,13 @@ textarea:focus {
     cursor: pointer;
     transition: all 0.2s;
     font-size: 1rem;
+    text-align: center;
 }
 
 .btn-primary {
     background-color: var(--primary-color);
     color: white;
-    flex: 2;
+    width: 100%;
 }
 
 .btn-primary:hover {
@@ -105,16 +114,27 @@ textarea:focus {
 }
 
 .btn-secondary {
-    background-color: var(--secondary-color);
+    background-color: #64748b;
     color: white;
     flex: 1;
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background-color: var(--secondary-hover);
+    background-color: #475569;
 }
 
-.btn-secondary:disabled {
+.btn-purchase {
+    background-color: #0ea5e9;
+    color: white;
+    flex: 1;
+}
+
+.btn-purchase:hover:not(:disabled) {
+    background-color: #0284c7;
+}
+
+.btn-secondary:disabled,
+.btn-purchase:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -147,13 +167,22 @@ textarea:focus {
 }
 
 .purchase-card {
-    border: 2px solid #fecaca;
-    background-color: #fef2f2;
+    border: 2px solid #bae6fd;
+    background-color: #f0f9ff;
 }
 
 .purchase-card h2 {
-    color: #b91c1c;
-    border-bottom-color: #fecaca;
+    color: #0369a1;
+    border-bottom-color: #bae6fd;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.icon-basket {
+    width: 24px;
+    height: 24px;
+    color: #0369a1;
 }
 
 .result-card h2 {

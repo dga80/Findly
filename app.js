@@ -113,7 +113,9 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
         searchResults = await response.json();
         calculatePurchaseList();
         renderTables();
-        document.getElementById('exportBtn').disabled = false;
+
+        document.getElementById('exportStockBtn').disabled = (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0);
+        document.getElementById('exportPurchaseBtn').disabled = (purchaseList.length === 0);
     } catch (error) {
         console.error(error);
         alert(error.message || "Ocurrió un error.");
@@ -131,12 +133,10 @@ function calculatePurchaseList() {
         const ref = input.reference;
         const requested = parseFloat(input.quantity) || 0;
 
-        // Sumar stock de Cerdanya
         const stockCerdanya = searchResults.inventario
             .filter(item => item.Referencia === ref)
             .reduce((sum, item) => sum + (parseFloat(item.Cantidad) || 0), 0);
 
-        // Sumar stock de Sonepar
         const stockSonepar = searchResults.sonepar
             .filter(item => item.Referencia === ref)
             .reduce((sum, item) => sum + (parseFloat(item.Cantidad) || 0), 0);
@@ -146,11 +146,11 @@ function calculatePurchaseList() {
         if (totalStock < requested) {
             purchaseList.push({
                 Referencia: ref,
-                Faltan: requested - totalStock,
-                StockCerdanya: stockCerdanya,
-                StockSonepar: stockSonepar,
-                TotalDisponible: totalStock,
-                Pedido: requested
+                'Uds a comprar': requested - totalStock,
+                'Stock Cerdanya': stockCerdanya,
+                'Stock Sonepar': stockSonepar,
+                'Total Disponible': totalStock,
+                'Pedido Original': requested
             });
         }
     });
@@ -161,7 +161,6 @@ function renderTables() {
     const sonTableBody = document.querySelector('#sonTable tbody');
     const purchaseTableBody = document.querySelector('#purchaseTable tbody');
 
-    // ... (headers update)
     const updateHeaders = (tableId) => {
         const thead = document.querySelector(`#${tableId} thead tr`);
         if (!thead.querySelector('.encargo-header')) {
@@ -196,7 +195,7 @@ function renderTables() {
     purchaseTableBody.innerHTML = purchaseList.map(item => `
         <tr>
             <td>${item.Referencia}</td>
-            <td style="color:#b91c1c; font-weight:700">${item.Faltan}</td>
+            <td style="color:#0369a1; font-weight:700">${item['Uds a comprar']}</td>
         </tr>
     `).join('');
 
@@ -207,18 +206,26 @@ function renderTables() {
     }
 }
 
-document.getElementById('exportBtn').addEventListener('click', () => {
+document.getElementById('exportStockBtn').addEventListener('click', () => {
     const wb = XLSX.utils.book_new();
-
     if (searchResults.inventario.length > 0) {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.inventario), "Inventario Cerdanya");
     }
     if (searchResults.sonepar.length > 0) {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.sonepar), "Stock Sonepar");
     }
-    if (purchaseList.length > 0) {
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseList), "Para Comprar");
-    }
+    XLSX.writeFile(wb, "Findly_Stock.xlsx");
+});
 
-    XLSX.writeFile(wb, "Findly_Resultados.xlsx");
+document.getElementById('exportPurchaseBtn').addEventListener('click', () => {
+    const wb = XLSX.utils.book_new();
+    if (purchaseList.length > 0) {
+        // Solo Referencia y Uds a comprar para el listado de compra principal
+        const exportData = purchaseList.map(item => ({
+            Referencia: item.Referencia,
+            'Uds a comprar': item['Uds a comprar']
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), "Para Comprar");
+    }
+    XLSX.writeFile(wb, "Findly_Compra.xlsx");
 });
