@@ -76,12 +76,13 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
     try {
         if (isManual) {
             const text = document.getElementById('refInput').value;
-            references = text.split('\n').map(r => r.trim()).filter(r => r !== "");
-            if (references.length === 0) throw new Error("Introduce referencias");
+            const refs = text.split('\n').map(r => r.trim()).filter(r => r !== "");
+            if (refs.length === 0) throw new Error("Introduce referencias");
+            currentInputData = refs.map(r => ({ reference: r, quantity: 1 }));
+            references = refs;
         } else {
             if (!selectedFile) throw new Error("Selecciona un archivo");
 
-            // Subir archivo para detectar columnas y extraer datos
             const formData = new FormData();
             formData.append('file', selectedFile);
 
@@ -95,10 +96,10 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                 throw new Error(err.error || 'Error al subir archivo');
             }
 
-            references = await uploadRes.json();
+            currentInputData = await uploadRes.json();
+            references = currentInputData;
         }
 
-        // Realizar búsqueda
         const response = await fetch('http://localhost:5000/search', {
             method: 'POST',
             headers: {
@@ -110,6 +111,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
         if (!response.ok) throw new Error('Error en la búsqueda');
 
         searchResults = await response.json();
+        calculatePurchaseList();
         renderTables();
         document.getElementById('exportBtn').disabled = false;
     } catch (error) {
