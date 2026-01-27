@@ -134,9 +134,13 @@ def search():
     df_inv['Referencia_UC'] = df_inv['Referencia'].astype(str).str.strip().str.upper()
     df_son['Referencia_UC'] = df_son['Referencia'].astype(str).str.strip().str.upper()
 
-    # Filtrar resultados usando las referencias en mayúsculas
+    # Filtrar resultados usando las referencias en mayúsculas y excluir stock 0
     res_inv = df_inv[df_inv['Referencia_UC'].isin(references_to_search)].to_dict('records')
     res_son = df_son[df_son['Referencia_UC'].isin(references_to_search)].to_dict('records')
+
+    # Filtrar stock 0 (convertir a float por si acaso)
+    res_inv = [item for item in res_inv if float(item.get('Cantidad', 0)) > 0]
+    res_son = [item for item in res_son if float(item.get('Cantidad', 0)) > 0]
 
     # Limpiar columnas temporales y añadir CantEncargo
     for item in res_inv:

@@ -189,23 +189,35 @@ function renderTables() {
     updateHeaders('invTable');
     updateHeaders('sonTable');
 
-    invTableBody.innerHTML = searchResults.inventario.map(item => `
-        <tr>
-            <td>${item.Referencia}</td>
-            <td>${item.Ubicacion || '-'}</td>
-            <td>${item.Cantidad}</td>
-            <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
-        </tr>
-    `).join('');
+    // Identificar referencias duplicadas en ambos listados
+    const invRefs = new Set(searchResults.inventario.map(item => String(item.Referencia).trim().toUpperCase()));
+    const repeatRefs = new Set(searchResults.sonepar
+        .map(item => String(item.Referencia).trim().toUpperCase())
+        .filter(ref => invRefs.has(ref)));
 
-    sonTableBody.innerHTML = searchResults.sonepar.map(item => `
-        <tr>
-            <td>${item.Referencia}</td>
-            <td>${item.Empresa || '-'}</td>
-            <td>${item.Cantidad}</td>
-            <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
-        </tr>
-    `).join('');
+    invTableBody.innerHTML = searchResults.inventario.map(item => {
+        const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
+        return `
+            <tr>
+                <td>${item.Referencia}</td>
+                <td>${item.Ubicacion || '-'}</td>
+                <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
+                <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    sonTableBody.innerHTML = searchResults.sonepar.map(item => {
+        const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
+        return `
+            <tr>
+                <td>${item.Referencia}</td>
+                <td>${item.Empresa || '-'}</td>
+                <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
+                <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
+            </tr>
+        `;
+    }).join('');
 
     purchaseTableBody.innerHTML = purchaseList.map(item => `
         <tr>
@@ -230,7 +242,13 @@ document.getElementById('exportStockBtn').addEventListener('click', () => {
     if (searchResults.sonepar.length > 0) {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.sonepar), "Stock Sonepar");
     }
-    XLSX.writeFile(wb, "Findly_Stock.xlsx");
+
+    let fileName = "Findly_Stock.xlsx";
+    if (selectedFile) {
+        const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+        fileName = `${baseName} STOCK.xlsx`;
+    }
+    XLSX.writeFile(wb, fileName);
 });
 
 document.getElementById('exportPurchaseBtn').addEventListener('click', () => {
@@ -243,5 +261,11 @@ document.getElementById('exportPurchaseBtn').addEventListener('click', () => {
         }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), "Para Comprar");
     }
-    XLSX.writeFile(wb, "Findly_Compra.xlsx");
+
+    let fileName = "Findly_Compra.xlsx";
+    if (selectedFile) {
+        const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+        fileName = `${baseName} COMPRA.xlsx`;
+    }
+    XLSX.writeFile(wb, fileName);
 });
