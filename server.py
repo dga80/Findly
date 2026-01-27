@@ -94,6 +94,9 @@ def upload_file():
         # Asegurar que reference sea string
         result_df['reference'] = result_df['reference'].astype(str).str.strip()
         
+        # Reemplazar NaN por 0 para evitar errores de JSON
+        result_df = result_df.fillna(0)
+        
         return jsonify(result_df.to_dict('records'))
 
     except Exception as e:
