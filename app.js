@@ -139,13 +139,18 @@ function calculatePurchaseList() {
         groupedOrder[ref] = (groupedOrder[ref] || 0) + qty;
     });
 
-    // 2. Agrupar stock disponible (SOLO DE INVENTARIO CERDANYA)
-    searchResults.inventario.forEach(item => {
-        const ref = String(item.Referencia || '').trim().toUpperCase();
-        if (!ref) return;
-        const qty = parseFloat(item.Cantidad) || 0;
-        stockMap[ref] = (stockMap[ref] || 0) + qty;
-    });
+    // 2. Agrupar stock disponible (Sumamos Cerdanya + Sonepar)
+    const processStock = (items) => {
+        items.forEach(item => {
+            const ref = String(item.Referencia || '').trim().toUpperCase();
+            if (!ref) return;
+            const qty = parseFloat(item.Cantidad) || 0;
+            stockMap[ref] = (stockMap[ref] || 0) + qty;
+        });
+    };
+
+    processStock(searchResults.inventario);
+    processStock(searchResults.sonepar);
 
     // 3. Calcular faltantes
     console.log("Calculando lista de compra...");
