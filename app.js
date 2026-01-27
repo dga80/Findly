@@ -129,31 +129,42 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
 function calculatePurchaseList() {
     purchaseList = [];
 
+    // 1. Agrupar pedido por referencia (total solicitado)
+    const groupedOrder = {};
     currentInputData.forEach(input => {
-        const ref = input.reference;
-        const requested = parseFloat(input.quantity) || 0;
+        const ref = String(input.reference || '').trim().toUpperCase();
+        if (!ref) return;
+        const qty = parseFloat(input.quantity) || 0;
+        groupedOrder[ref] = (groupedOrder[ref] || 0) + qty;
+    });
 
-        const stockCerdanya = searchResults.inventario
-            .filter(item => item.Referencia === ref)
-            .reduce((sum, item) => sum + (parseFloat(item.Cantidad) || 0), 0);
+    // 2. Agrupar stock disponible por referencia
+    const stockMap = {};
+    const processStock = (items) => {
+        items.forEach(item => {
+            const ref = String(item.Referencia || '').trim().toUpperCase();
+            if (!ref) return;
+            const qty = parseFloat(item.Cantidad) || 0;
+            stockMap[ref] = (stockMap[ref] || 0) + qty;
+        });
+    };
 
-        const stockSonepar = searchResults.sonepar
-            .filter(item => item.Referencia === ref)
-            .reduce((sum, item) => sum + (parseFloat(item.Cantidad) || 0), 0);
+    processStock(searchResults.inventario);
+    processStock(searchResults.sonepar);
 
-        const totalStock = stockCerdanya + stockSonepar;
+    // 3. Calcular faltantes
+    for (const [ref, requested] of Object.entries(groupedOrder)) {
+        const available = stockMap[ref] || 0;
 
-        if (totalStock < requested) {
+        if (available < requested) {
             purchaseList.push({
                 Referencia: ref,
-                'Uds a comprar': requested - totalStock,
-                'Stock Cerdanya': stockCerdanya,
-                'Stock Sonepar': stockSonepar,
-                'Total Disponible': totalStock,
-                'Pedido Original': requested
+                Pedido: requested,
+                Disponible: available,
+                'Uds a comprar': requested - available
             });
         }
-    });
+    }
 }
 
 function renderTables() {
@@ -195,6 +206,7 @@ function renderTables() {
     purchaseTableBody.innerHTML = purchaseList.map(item => `
         <tr>
             <td>${item.Referencia}</td>
+            <td style="font-weight:600">${item.Pedido}</td>
             <td style="color:#0369a1; font-weight:700">${item['Uds a comprar']}</td>
         </tr>
     `).join('');
@@ -202,7 +214,7 @@ function renderTables() {
     if (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0 && purchaseList.length === 0) {
         invTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
         sonTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
-        purchaseTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center">Todo en stock</td></tr>';
+        purchaseTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">Todo en stock</td></tr>';
     }
 }
 
