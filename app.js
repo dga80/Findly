@@ -86,7 +86,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
             const formData = new FormData();
             formData.append('file', selectedFile);
 
-            const uploadRes = await fetch('http://localhost:5000/upload', {
+            const uploadRes = await fetch('http://172.30.0.161:5000/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -100,7 +100,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
             references = currentInputData;
         }
 
-        const response = await fetch('http://localhost:5000/search', {
+        const response = await fetch('http://172.30.0.161:5000/search', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
