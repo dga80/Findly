@@ -1,5 +1,9 @@
 let searchResults = { inventario: [], sonepar: [] };
+let purchaseList = [];
 let selectedFile = null;
+let currentInputData = [];
+
+// ... (previous tab and file logic remains same)
 
 // Tab logic
 document.getElementById('manualTab').addEventListener('click', () => {
@@ -118,11 +122,44 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
     }
 });
 
+function calculatePurchaseList() {
+    purchaseList = [];
+
+    currentInputData.forEach(input => {
+        const ref = input.reference;
+        const requested = parseFloat(input.quantity) || 0;
+
+        // Sumar stock de Cerdanya
+        const stockCerdanya = searchResults.inventario
+            .filter(item => item.Referencia === ref)
+            .reduce((sum, item) => sum + (parseFloat(item.Cantidad) || 0), 0);
+
+        // Sumar stock de Sonepar
+        const stockSonepar = searchResults.sonepar
+            .filter(item => item.Referencia === ref)
+            .reduce((sum, item) => sum + (parseFloat(item.Cantidad) || 0), 0);
+
+        const totalStock = stockCerdanya + stockSonepar;
+
+        if (totalStock < requested) {
+            purchaseList.push({
+                Referencia: ref,
+                Faltan: requested - totalStock,
+                StockCerdanya: stockCerdanya,
+                StockSonepar: stockSonepar,
+                TotalDisponible: totalStock,
+                Pedido: requested
+            });
+        }
+    });
+}
+
 function renderTables() {
     const invTableBody = document.querySelector('#invTable tbody');
     const sonTableBody = document.querySelector('#sonTable tbody');
+    const purchaseTableBody = document.querySelector('#purchaseTable tbody');
 
-    // Actualizar encabezados si es necesario (añadir columna de Cant. Encargo)
+    // ... (headers update)
     const updateHeaders = (tableId) => {
         const thead = document.querySelector(`#${tableId} thead tr`);
         if (!thead.querySelector('.encargo-header')) {
@@ -154,30 +191,31 @@ function renderTables() {
         </tr>
     `).join('');
 
-    if (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0) {
-        invTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">No se encontraron resultados</td></tr>';
-        sonTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">No se encontraron resultados</td></tr>';
+    purchaseTableBody.innerHTML = purchaseList.map(item => `
+        <tr>
+            <td>${item.Referencia}</td>
+            <td style="color:#b91c1c; font-weight:700">${item.Faltan}</td>
+        </tr>
+    `).join('');
+
+    if (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0 && purchaseList.length === 0) {
+        invTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
+        sonTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
+        purchaseTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center">Todo en stock</td></tr>';
     }
 }
 
 document.getElementById('exportBtn').addEventListener('click', () => {
     const wb = XLSX.utils.book_new();
 
-    // Hoja Inventario
     if (searchResults.inventario.length > 0) {
-        const wsInv = XLSX.utils.json_to_sheet(searchResults.inventario);
-        XLSX.utils.book_append_sheet(wb, wsInv, "Inventario Cerdanya");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.inventario), "Inventario Cerdanya");
     }
-
-    // Hoja Sonepar
     if (searchResults.sonepar.length > 0) {
-        const wsSon = XLSX.utils.json_to_sheet(searchResults.sonepar);
-        XLSX.utils.book_append_sheet(wb, wsSon, "Stock Sonepar");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.sonepar), "Stock Sonepar");
     }
-
-    if (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0) {
-        alert("No hay resultados para exportar");
-        return;
+    if (purchaseList.length > 0) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseList), "Para Comprar");
     }
 
     XLSX.writeFile(wb, "Findly_Resultados.xlsx");

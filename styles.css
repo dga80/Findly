@@ -121,8 +121,14 @@ textarea:focus {
 
 .results-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+    .results-grid {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 @media (max-width: 768px) {
@@ -136,6 +142,18 @@ textarea:focus {
     padding: 1.5rem;
     border-radius: 1rem;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.purchase-card {
+    border: 2px solid #fecaca;
+    background-color: #fef2f2;
+}
+
+.purchase-card h2 {
+    color: #b91c1c;
+    border-bottom-color: #fecaca;
 }
 
 .result-card h2 {
