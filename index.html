@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -18,9 +20,28 @@
         </header>
 
         <section class="input-section">
-            <textarea id="refInput" placeholder="Pega aquí el listado de referencias (una por línea)..."></textarea>
+            <div class="input-tabs">
+                <button id="manualTab" class="tab-btn active">Manual</button>
+                <button id="uploadTab" class="tab-btn">Subir Excel</button>
+            </div>
+
+            <div id="manualInputContainer" class="input-container">
+                <textarea id="refInput" placeholder="Pega aquí el listado de referencias (una por línea)..."></textarea>
+            </div>
+
+            <div id="uploadInputContainer" class="input-container hidden">
+                <div class="file-drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" hidden>
+                    <p>Arrastra tu Excel aquí o <span class="browse">selecciona un archivo</span></p>
+                    <div id="fileInfo" class="hidden">
+                        <span class="file-name"></span>
+                        <button id="clearFile" class="btn-icon">×</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="actions">
-                <button id="searchBtn" class="btn-primary">Buscar Referencias</button>
+                <button id="searchBtn" class="btn-primary">Buscar Stock</button>
                 <button id="exportBtn" class="btn-secondary" disabled>Exportar a Excel</button>
             </div>
         </section>
@@ -67,4 +88,5 @@
     </div>
     <script src="app.js"></script>
 </body>
+
 </html>

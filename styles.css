@@ -83,7 +83,8 @@ textarea:focus {
     gap: 1rem;
 }
 
-.btn-primary, .btn-secondary {
+.btn-primary,
+.btn-secondary {
     padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 0.5rem;
@@ -155,6 +156,91 @@ table {
     text-align: left;
 }
 
+.hidden {
+    display: none !important;
+}
+
+.input-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.file-drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fdfdfd;
+}
+
+.file-drop-zone:hover,
+.file-drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.browse {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+#fileInfo {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background: #e2e8f0;
+    border-radius: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-icon {
+    border: none;
+    background: #94a3b8;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.btn-icon:hover {
+    background: #64748b;
+}
+
+.cant-encargo {
+    background: #fef3c7;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+}
+
 th {
     background: #f1f5f9;
     padding: 0.75rem;
@@ -162,19 +248,5 @@ th {
     font-size: 0.875rem;
     position: sticky;
     top: 0;
-}
-
-td {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.875rem;
-}
-
-tr:hover {
-    background-color: #f8fafc;
-}
-
-.loading {
-    opacity: 0.7;
-    pointer-events: none;
+    z-index: 10;
 }
