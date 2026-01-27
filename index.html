@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Findly - Buscador de Stock</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Findly</h1>
+            <p>Buscador de stock para Cerdanya y Sonepar</p>
+        </header>
+
+        <section class="input-section">
+            <textarea id="refInput" placeholder="Pega aquí el listado de referencias (una por línea)..."></textarea>
+            <div class="actions">
+                <button id="searchBtn" class="btn-primary">Buscar Referencias</button>
+                <button id="exportBtn" class="btn-secondary" disabled>Exportar a Excel</button>
+            </div>
+        </section>
+
+        <section class="results-section">
+            <div class="results-grid">
+                <div class="result-card">
+                    <h2>Inventario Cerdanya</h2>
+                    <div class="table-container">
+                        <table id="invTable">
+                            <thead>
+                                <tr>
+                                    <th>Referencia</th>
+                                    <th>Ubicación</th>
+                                    <th>Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Resultados aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="result-card">
+                    <h2>Stock Sonepar</h2>
+                    <div class="table-container">
+                        <table id="sonTable">
+                            <thead>
+                                <tr>
+                                    <th>Referencia</th>
+                                    <th>Empresa</th>
+                                    <th>Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Resultados aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
