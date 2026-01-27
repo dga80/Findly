@@ -141,13 +141,13 @@ textarea:focus {
 
 .results-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
 }
 
 @media (max-width: 1200px) {
     .results-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     }
 }
 
@@ -159,11 +159,13 @@ textarea:focus {
 
 .result-card {
     background: var(--card-bg);
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 1rem;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    /* Evita que el contenido ensanche la tarjeta */
 }
 
 .purchase-card {
@@ -283,17 +285,23 @@ table {
 
 .cant-encargo {
     background: #fef3c7;
-    padding: 0.2rem 0.4rem;
+    padding: 0.1rem 0.3rem;
     border-radius: 0.25rem;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 0.75rem;
 }
 
 th {
     background: #f1f5f9;
-    padding: 0.75rem;
+    padding: 0.4rem;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     position: sticky;
     top: 0;
     z-index: 10;
+}
+td {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
 }
