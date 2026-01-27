@@ -117,32 +117,38 @@ def search():
 
     for item in input_data:
         if isinstance(item, str):
-            ref = item.strip()
+            ref = item.strip().upper()
             qty = 0
         else:
-            ref = str(item.get('reference', '')).strip()
+            ref = str(item.get('reference', '')).strip().upper()
             qty = item.get('quantity', 0)
         
         if ref:
             references_to_search.append(ref)
-            qty_map[ref] = qty
+            qty_map[ref] = qty_map.get(ref, 0) + float(qty)
 
     df_inv = read_inventario()
     df_son = read_sonepar()
 
-    # Convertir referencias a string para comparar
-    df_inv['Referencia'] = df_inv['Referencia'].astype(str).str.strip()
-    df_son['Referencia'] = df_son['Referencia'].astype(str).str.strip()
+    # Convertir a mayúsculas para búsqueda exacta case-insensitive
+    df_inv['Referencia_UC'] = df_inv['Referencia'].astype(str).str.strip().str.upper()
+    df_son['Referencia_UC'] = df_son['Referencia'].astype(str).str.strip().str.upper()
 
-    # Filtrar resultados
-    res_inv = df_inv[df_inv['Referencia'].isin(references_to_search)].to_dict('records')
-    res_son = df_son[df_son['Referencia'].isin(references_to_search)].to_dict('records')
+    # Filtrar resultados usando las referencias en mayúsculas
+    res_inv = df_inv[df_inv['Referencia_UC'].isin(references_to_search)].to_dict('records')
+    res_son = df_son[df_son['Referencia_UC'].isin(references_to_search)].to_dict('records')
 
-    # Añadir la cantidad del encargo si existe
+    # Limpiar columnas temporales y añadir CantEncargo
     for item in res_inv:
-        item['CantEncargo'] = qty_map.get(item['Referencia'], 0)
+        item.pop('Referencia_UC', None)
+        # Usar la referencia original o la buscada para el mapa
+        ref_upper = str(item['Referencia']).strip().upper()
+        item['CantEncargo'] = qty_map.get(ref_upper, 0)
+        
     for item in res_son:
-        item['CantEncargo'] = qty_map.get(item['Referencia'], 0)
+        item.pop('Referencia_UC', None)
+        ref_upper = str(item['Referencia']).strip().upper()
+        item['CantEncargo'] = qty_map.get(ref_upper, 0)
 
     return jsonify({
         'inventario': res_inv,

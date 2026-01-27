@@ -128,6 +128,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
 
 function calculatePurchaseList() {
     purchaseList = [];
+    const stockMap = {};
 
     // 1. Agrupar pedido por referencia (total solicitado)
     const groupedOrder = {};
@@ -138,33 +139,31 @@ function calculatePurchaseList() {
         groupedOrder[ref] = (groupedOrder[ref] || 0) + qty;
     });
 
-    // 2. Agrupar stock disponible por referencia
-    const stockMap = {};
-    const processStock = (items) => {
-        items.forEach(item => {
-            const ref = String(item.Referencia || '').trim().toUpperCase();
-            if (!ref) return;
-            const qty = parseFloat(item.Cantidad) || 0;
-            stockMap[ref] = (stockMap[ref] || 0) + qty;
-        });
-    };
-
-    processStock(searchResults.inventario);
-    processStock(searchResults.sonepar);
+    // 2. Agrupar stock disponible (SOLO DE INVENTARIO CERDANYA)
+    searchResults.inventario.forEach(item => {
+        const ref = String(item.Referencia || '').trim().toUpperCase();
+        if (!ref) return;
+        const qty = parseFloat(item.Cantidad) || 0;
+        stockMap[ref] = (stockMap[ref] || 0) + qty;
+    });
 
     // 3. Calcular faltantes
+    console.log("Calculando lista de compra...");
     for (const [ref, requested] of Object.entries(groupedOrder)) {
         const available = stockMap[ref] || 0;
+        console.log(`Ref: ${ref} | Pedido: ${requested} | Disponible: ${available}`);
 
         if (available < requested) {
+            const toBuy = requested - available;
             purchaseList.push({
                 Referencia: ref,
                 Pedido: requested,
                 Disponible: available,
-                'Uds a comprar': requested - available
+                'Uds a comprar': toBuy
             });
         }
     }
+    console.log("Lista de compra final:", purchaseList);
 }
 
 function renderTables() {
