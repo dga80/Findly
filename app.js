@@ -168,6 +168,9 @@ function calculatePurchaseList() {
             });
         }
     }
+    // 4. Ordenar alfabéticamente por Referencia
+    purchaseList.sort((a, b) => a.Referencia.localeCompare(b.Referencia));
+
     console.log("Lista de compra final:", purchaseList);
 }
 
