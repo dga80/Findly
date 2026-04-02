@@ -134,9 +134,20 @@ textarea:focus {
 }
 
 .btn-secondary:disabled,
-.btn-purchase:disabled {
+.btn-purchase:disabled,
+.btn-pdf:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.btn-pdf {
+    background-color: #ef4444;
+    color: white;
+    flex: 1;
+}
+
+.btn-pdf:hover:not(:disabled) {
+    background-color: #dc2626;
 }
 
 .results-grid {
