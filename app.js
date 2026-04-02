@@ -110,11 +110,14 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
         searchResults = await response.json();
         renderTables();
 
-        document.getElementById('exportStockBtn').disabled = (
-            searchResults.inventario.length === 0 &&
-            searchResults.sonepar.length === 0
+        const hasResults = (
+            (searchResults.inventario && searchResults.inventario.length > 0) ||
+            (searchResults.sonepar && searchResults.sonepar.length > 0) ||
+            (searchResults.sti && searchResults.sti.length > 0)
         );
-        document.getElementById('exportPdfBtn').disabled = document.getElementById('exportStockBtn').disabled;
+
+        document.getElementById('exportStockBtn').disabled = !hasResults;
+        document.getElementById('exportPdfBtn').disabled = !hasResults;
 
     } catch (error) {
         console.error(error);
