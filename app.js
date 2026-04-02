@@ -227,15 +227,29 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    // Configuración estética
-    const primaryColor = [30, 41, 59]; // #1e293b
-    const accentColor = [37, 99, 235];  // #2563eb
+    // Colores corporativos
+    const primaryColor = [30, 41, 59]; // #1e293b (Azul oscuro)
+    const accentColor = [37, 99, 235];  // #2563eb (Azul primario)
+    const highlightColor = [224, 231, 255]; // #e0e7ff (Azul muy claro para comunes)
+    const highlightTextColor = [30, 58, 138]; // #1e3a8a (Texto azul oscuro para comunes)
+
+    // Identificar referencias duplicadas para el resaltado
+    const invRefsSet = new Set(searchResults.inventario.map(item => String(item.Referencia).trim().toUpperCase()));
+    const sonRefsSet = new Set(searchResults.sonepar.map(item => String(item.Referencia).trim().toUpperCase()));
     
+    // Referencias comunes
+    const commonRefs = new Set([...invRefsSet].filter(x => sonRefsSet.has(x)));
+
     // Título y Cabecera
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
+    doc.setFontSize(18);
     doc.setTextColor(...primaryColor);
-    doc.text("Findly - Informe de Stock", 15, 20);
+    
+    let titleName = "Manual";
+    if (selectedFile) {
+        titleName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+    }
+    doc.text(`${titleName} Informe de Stock`, 15, 20);
     
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -244,97 +258,118 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
         day: '2-digit', month: '2-digit', year: 'numeric', 
         hour: '2-digit', minute: '2-digit' 
     });
-    doc.text(`Generado el: ${dateStr}`, 15, 27);
-    
-    if (selectedFile) {
-        doc.setFont("helvetica", "italic");
-        doc.text(`Archivo origen: ${selectedFile.name}`, 15, 32);
-    }
+    doc.text(`Generado: ${dateStr}`, 15, 27);
     
     doc.setDrawColor(...accentColor);
     doc.setLineWidth(0.5);
-    doc.line(15, 35, pageWidth - 15, 35);
+    doc.line(15, 32, pageWidth - 15, 32);
 
-    // Consolidar datos para las columnas
-    // Combinamos Inventario y Sonepar
-    const allItems = [];
-    
-    searchResults.inventario.forEach(item => {
-        allItems.push({
-            ref: item.Referencia,
-            info: item.Ubicacion || 'INV',
-            qty: item.Cantidad,
-            origin: 'Cerdanya'
-        });
-    });
-    
-    searchResults.sonepar.forEach(item => {
-        allItems.push({
-            ref: item.Referencia,
-            info: item.Empresa || 'SON',
-            qty: item.Cantidad,
-            origin: 'Sonepar'
-        });
-    });
+    // Leyenda
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(...highlightTextColor);
+    doc.text("* Las filas resaltadas en azul indican referencias presentes en ambos stocks (Cerdanya y Sonepar).", 15, 38);
 
-    if (allItems.length === 0) {
-        doc.text("No hay datos de stock para mostrar.", 15, 45);
-        doc.save("Stock_Findly.pdf");
-        return;
-    }
+    let currentY = 48;
 
-    // Dividir en 3 columnas
-    const colCount = 3;
-    const itemsPerCol = Math.ceil(allItems.length / colCount);
-    const columns = [[], [], []];
-    
-    for (let i = 0; i < allItems.length; i++) {
-        const colIdx = Math.floor(i / itemsPerCol);
-        if (colIdx < colCount) {
-            columns[colIdx].push(allItems[i]);
-        }
-    }
-
-    // Dibujar las 3 tablas side-by-side
-    const startY = 42;
-    const colWidth = (pageWidth - 30 - 10) / 3; // 30 margen total, 10 espacio entre columnas (5+5)
-    const gutter = 5;
-
-    columns.forEach((colData, index) => {
-        if (colData.length === 0) return;
+    // --- SECCIÓN 1: INVENTARIO CERDANYA ---
+    if (searchResults.inventario.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...accentColor);
+        doc.text("Inventario Cerdanya", 15, currentY);
+        currentY += 4;
 
         doc.autoTable({
-            startY: startY,
-            margin: { left: 15 + (index * (colWidth + gutter)) },
-            tableWidth: colWidth,
-            body: colData.map(item => [
-                { content: `${item.ref}\n${item.info}`, styles: { fontSize: 7 } },
-                { content: item.qty, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } }
+            startY: currentY,
+            margin: { left: 15, right: 15 },
+            head: [['Referencia', 'Ubicación', 'Cantidad', 'Cant. Encargo']],
+            body: searchResults.inventario.map(item => [
+                item.Referencia,
+                item.Ubicacion || '-',
+                item.Cantidad,
+                item.CantEncargo || '-'
             ]),
-            theme: 'striped',
-            styles: {
-                cellPadding: 1,
-                overflow: 'linebreak',
-                lineColor: [226, 232, 240]
-            },
-            head: index === 0 ? [] : [], // Sin cabecera para ahorrar espacio
-            columnStyles: {
-                0: { cellWidth: colWidth * 0.75 },
-                1: { cellWidth: colWidth * 0.25 }
-            },
-            didParseCell: function(data) {
-                // Si la referencia está en ambos stocks, podríamos destacarla (opcional)
-                // if (data.section === 'body' && data.column.index === 1) {
-                //     data.cell.styles.textColor = accentColor;
-                // }
+            theme: 'grid',
+            headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.row.raw) {
+                    const ref = String(data.row.raw[0]).trim().toUpperCase();
+                    if (commonRefs.has(ref)) {
+                        data.cell.styles.fillColor = highlightColor;
+                        data.cell.styles.textColor = highlightTextColor;
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
             }
         });
-    });
+        currentY = doc.lastAutoTable.finalY + 12;
+    }
 
-    let fileName = "Findly_Stock.pdf";
+    // --- SECCIÓN 2: STOCK SONEPAR ---
+    if (searchResults.sonepar.length > 0) {
+        // Salto de página si es necesario
+        if (currentY > 260) { doc.addPage(); currentY = 20; }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...accentColor);
+        doc.text("Stock Sonepar", 15, currentY);
+        currentY += 4;
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 15, right: 15 },
+            head: [['Referencia', 'Empresa', 'Cantidad', 'Cant. Encargo']],
+            body: searchResults.sonepar.map(item => [
+                item.Referencia,
+                item.Empresa || '-',
+                item.Cantidad,
+                item.CantEncargo || '-'
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [15, 118, 110], textColor: 255, fontSize: 9 }, // Color verde oscuro para diferenciar
+            styles: { fontSize: 8, cellPadding: 2 },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.row.raw) {
+                    const ref = String(data.row.raw[0]).trim().toUpperCase();
+                    if (commonRefs.has(ref)) {
+                        data.cell.styles.fillColor = highlightColor;
+                        data.cell.styles.textColor = highlightTextColor;
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            }
+        });
+        currentY = doc.lastAutoTable.finalY + 12;
+    }
+
+    // --- SECCIÓN 3: STOCK STI ---
+    if (searchResults.sti && searchResults.sti.length > 0) {
+        if (currentY > 260) { doc.addPage(); currentY = 20; }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(21, 128, 61); // #15803d
+        doc.text("Stock STI", 15, currentY);
+        currentY += 4;
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 15, right: 15 },
+            head: [['Referencia', 'Estado']],
+            body: searchResults.sti.map(ref => [ref, '✔ Disponible']),
+            theme: 'grid',
+            headStyles: { fillColor: [21, 128, 61], textColor: 255, fontSize: 9 },
+            styles: { fontSize: 8, cellPadding: 2 }
+        });
+    }
+
+    let fileName = "Informe_Stock_Findly.pdf";
     if (selectedFile) {
         const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
-        fileName = `${baseName} STOCK.pdf`;
+        fileName = `${baseName}_INFORME_STOCK.pdf`;
     }
     doc.save(fileName);
 });
