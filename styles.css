@@ -144,10 +144,19 @@ textarea:focus {
     background-color: #ED1C24;
     color: white;
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
 .btn-pdf:hover:not(:disabled) {
     background-color: #B91C1C;
+}
+
+.btn-icon-svg {
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 .results-grid {
