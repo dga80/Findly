@@ -141,13 +141,13 @@ textarea:focus {
 }
 
 .btn-pdf {
-    background-color: #991b1b;
+    background-color: #ED1C24;
     color: white;
     flex: 1;
 }
 
 .btn-pdf:hover:not(:disabled) {
-    background-color: #7f1d1d;
+    background-color: #B91C1C;
 }
 
 .results-grid {
