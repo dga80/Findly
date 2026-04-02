@@ -168,14 +168,14 @@ textarea:focus {
     /* Evita que el contenido ensanche la tarjeta */
 }
 
-.purchase-card {
-    border: 2px solid #bae6fd;
-    background-color: #f0f9ff;
+.sti-card {
+    border: 2px solid #bbf7d0;
+    background-color: #f0fdf4;
 }
 
-.purchase-card h2 {
-    color: #0369a1;
-    border-bottom-color: #bae6fd;
+.sti-card h2 {
+    color: #15803d;
+    border-bottom-color: #bbf7d0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -184,7 +184,18 @@ textarea:focus {
 .icon-basket {
     width: 24px;
     height: 24px;
-    color: #0369a1;
+    color: #15803d;
+}
+
+.sti-badge {
+    display: inline-block;
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 700;
+    font-size: 0.75rem;
 }
 
 .result-card h2 {

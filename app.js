@@ -1,11 +1,8 @@
-let searchResults = { inventario: [], sonepar: [] };
-let purchaseList = [];
+let searchResults = { inventario: [], sonepar: [], sti: [] };
 let selectedFile = null;
 let currentInputData = [];
 
-// ... (previous tab and file logic remains same)
-
-// Tab logic
+// Tab logic — "Subir Excel" activo por defecto
 document.getElementById('manualTab').addEventListener('click', () => {
     document.getElementById('manualTab').classList.add('active');
     document.getElementById('uploadTab').classList.remove('active');
@@ -86,7 +83,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
             const formData = new FormData();
             formData.append('file', selectedFile);
 
-            const uploadRes = await fetch('http://172.30.0.161:5000/upload', {
+            const uploadRes = await fetch('http://localhost:5000/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -100,7 +97,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
             references = currentInputData;
         }
 
-        const response = await fetch('http://172.30.0.161:5000/search', {
+        const response = await fetch('http://localhost:5000/search', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -111,11 +108,13 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
         if (!response.ok) throw new Error('Error en la búsqueda');
 
         searchResults = await response.json();
-        calculatePurchaseList();
         renderTables();
 
-        document.getElementById('exportStockBtn').disabled = (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0);
-        document.getElementById('exportPurchaseBtn').disabled = (purchaseList.length === 0);
+        document.getElementById('exportStockBtn').disabled = (
+            searchResults.inventario.length === 0 &&
+            searchResults.sonepar.length === 0
+        );
+
     } catch (error) {
         console.error(error);
         alert(error.message || "Ocurrió un error.");
@@ -126,58 +125,10 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
     }
 });
 
-function calculatePurchaseList() {
-    purchaseList = [];
-    const stockMap = {};
-
-    // 1. Agrupar pedido por referencia (total solicitado)
-    const groupedOrder = {};
-    currentInputData.forEach(input => {
-        const ref = String(input.reference || '').trim().toUpperCase();
-        if (!ref) return;
-        const qty = parseFloat(input.quantity) || 0;
-        groupedOrder[ref] = (groupedOrder[ref] || 0) + qty;
-    });
-
-    // 2. Agrupar stock disponible (Sumamos Cerdanya + Sonepar)
-    const processStock = (items) => {
-        items.forEach(item => {
-            const ref = String(item.Referencia || '').trim().toUpperCase();
-            if (!ref) return;
-            const qty = parseFloat(item.Cantidad) || 0;
-            stockMap[ref] = (stockMap[ref] || 0) + qty;
-        });
-    };
-
-    processStock(searchResults.inventario);
-    processStock(searchResults.sonepar);
-
-    // 3. Calcular faltantes
-    console.log("Calculando lista de compra...");
-    for (const [ref, requested] of Object.entries(groupedOrder)) {
-        const available = stockMap[ref] || 0;
-        console.log(`Ref: ${ref} | Pedido: ${requested} | Disponible: ${available}`);
-
-        if (available < requested) {
-            const toBuy = requested - available;
-            purchaseList.push({
-                Referencia: ref,
-                Pedido: requested,
-                Disponible: available,
-                'Uds a comprar': toBuy
-            });
-        }
-    }
-    // 4. Ordenar alfabéticamente por Referencia
-    purchaseList.sort((a, b) => a.Referencia.localeCompare(b.Referencia));
-
-    console.log("Lista de compra final:", purchaseList);
-}
-
 function renderTables() {
     const invTableBody = document.querySelector('#invTable tbody');
     const sonTableBody = document.querySelector('#sonTable tbody');
-    const purchaseTableBody = document.querySelector('#purchaseTable tbody');
+    const stiTableBody = document.querySelector('#stiTable tbody');
 
     const updateHeaders = (tableId) => {
         const thead = document.querySelector(`#${tableId} thead tr`);
@@ -198,43 +149,55 @@ function renderTables() {
         .map(item => String(item.Referencia).trim().toUpperCase())
         .filter(ref => invRefs.has(ref)));
 
-    invTableBody.innerHTML = searchResults.inventario.map(item => {
-        const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
-        return `
+    // Renderizar Inventario Cerdanya
+    invTableBody.innerHTML = searchResults.inventario.length > 0
+        ? searchResults.inventario.map(item => {
+            const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
+            return `
+                <tr>
+                    <td>${item.Referencia}</td>
+                    <td>${item.Ubicacion || '-'}</td>
+                    <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
+                    <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
+                </tr>
+            `;
+        }).join('')
+        : '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
+
+    // Renderizar Stock Sonepar
+    sonTableBody.innerHTML = searchResults.sonepar.length > 0
+        ? searchResults.sonepar.map(item => {
+            const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
+            return `
+                <tr>
+                    <td>${item.Referencia}</td>
+                    <td>${item.Empresa || '-'}</td>
+                    <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
+                    <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
+                </tr>
+            `;
+        }).join('')
+        : '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
+
+    // Renderizar Stock STI
+    // searchResults.sti es una lista de referencias que coinciden en el archivo ZOE STI
+    const stiSet = new Set((searchResults.sti || []).map(r => String(r).trim().toUpperCase()));
+
+    // Construir la lista a partir de todas las referencias buscadas
+    const allRefs = [...new Set(currentInputData.map(item =>
+        String(item.reference || item).trim()
+    ))];
+
+    const stiRows = allRefs.filter(ref => stiSet.has(ref.toUpperCase()));
+
+    stiTableBody.innerHTML = stiRows.length > 0
+        ? stiRows.map(ref => `
             <tr>
-                <td>${item.Referencia}</td>
-                <td>${item.Ubicacion || '-'}</td>
-                <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
-                <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
+                <td>${ref}</td>
+                <td><span class="sti-badge">✔ Disponible</span></td>
             </tr>
-        `;
-    }).join('');
-
-    sonTableBody.innerHTML = searchResults.sonepar.map(item => {
-        const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
-        return `
-            <tr>
-                <td>${item.Referencia}</td>
-                <td>${item.Empresa || '-'}</td>
-                <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
-                <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
-            </tr>
-        `;
-    }).join('');
-
-    purchaseTableBody.innerHTML = purchaseList.map(item => `
-        <tr>
-            <td>${item.Referencia}</td>
-            <td style="font-weight:600">${item.Pedido}</td>
-            <td style="color:#0369a1; font-weight:700">${item['Uds a comprar']}</td>
-        </tr>
-    `).join('');
-
-    if (searchResults.inventario.length === 0 && searchResults.sonepar.length === 0 && purchaseList.length === 0) {
-        invTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
-        sonTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">No se encontraron resultados</td></tr>';
-        purchaseTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">Todo en stock</td></tr>';
-    }
+        `).join('')
+        : '<tr><td colspan="2" style="text-align:center">Sin coincidencias en STI</td></tr>';
 }
 
 document.getElementById('exportStockBtn').addEventListener('click', () => {
@@ -245,30 +208,15 @@ document.getElementById('exportStockBtn').addEventListener('click', () => {
     if (searchResults.sonepar.length > 0) {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.sonepar), "Stock Sonepar");
     }
+    if ((searchResults.sti || []).length > 0) {
+        const stiExport = searchResults.sti.map(ref => ({ Referencia: ref, 'En STI': 'Sí' }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stiExport), "Stock STI");
+    }
 
     let fileName = "Findly_Stock.xlsx";
     if (selectedFile) {
         const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
         fileName = `${baseName} STOCK.xlsx`;
-    }
-    XLSX.writeFile(wb, fileName);
-});
-
-document.getElementById('exportPurchaseBtn').addEventListener('click', () => {
-    const wb = XLSX.utils.book_new();
-    if (purchaseList.length > 0) {
-        // Solo Referencia y Uds a comprar para el listado de compra principal
-        const exportData = purchaseList.map(item => ({
-            Referencia: item.Referencia,
-            'Uds a comprar': item['Uds a comprar']
-        }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), "Para Comprar");
-    }
-
-    let fileName = "Findly_Compra.xlsx";
-    if (selectedFile) {
-        const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
-        fileName = `${baseName} COMPRA.xlsx`;
     }
     XLSX.writeFile(wb, fileName);
 });

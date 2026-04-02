@@ -9,26 +9,131 @@ CORS(app)
 # Rutas de los archivos de Excel
 PATH_INVENTARIO = r"\\172.30.0.10\Logistica\06-ALMACENES\06.01-ALMACEN CERDANYA\STOCK\INVENTARIO Cerdanya (NUEVO).xlsx"
 PATH_SONEPAR = r"\\172.30.0.10\Logistica\06-ALMACENES\06.01-ALMACEN CERDANYA\STOCK\STOCK SCHNEIDER-SONEPAR 26.xlsx"
+PATH_STI = r"\\172.30.0.10\Logistica\06-ALMACENES\06.01-ALMACEN CERDANYA\STOCK\ZOE STI.xlsx"
 
 def read_inventario():
     try:
         # Col A = Ubicación (index 0), Col B = Referencia (index 1), Col E = Cantidad (index 4)
         df = pd.read_excel(PATH_INVENTARIO, usecols=[0, 1, 4])
         df.columns = ['Ubicacion', 'Referencia', 'Cantidad']
-        return df.dropna(subset=['Referencia'])
+        df = df.dropna(subset=['Referencia'])
+        
+        # Limpiar valores NaN para evitar errores de JSON
+        df['Cantidad'] = pd.to_numeric(df['Cantidad'], errors='coerce').fillna(0)
+        df['Ubicacion'] = df['Ubicacion'].fillna('')
+        df = df.replace([float('inf'), float('-inf')], 0)
+        
+        return df
     except Exception as e:
         print(f"Error reading Inventario: {e}")
         return pd.DataFrame(columns=['Ubicacion', 'Referencia', 'Cantidad'])
 
 def read_sonepar():
     try:
-        # Col B = Referencia (index 1), Col Q = Empresa (index 16), Col AE = Cantidad (index 30)
-        df = pd.read_excel(PATH_SONEPAR, usecols=[1, 16, 30])
-        df.columns = ['Referencia', 'Empresa', 'Cantidad']
-        return df.dropna(subset=['Referencia'])
+        # Primero leemos las cabeceras para identificar los nombres de las columnas
+        df_header = pd.read_excel(PATH_SONEPAR, nrows=0)
+
+        if len(df_header.columns) < 2:
+            print("Error: El archivo Sonepar no tiene suficientes columnas.")
+            return pd.DataFrame(columns=['Referencia', 'Empresa', 'Cantidad'])
+
+        col_ref = df_header.columns[1]  # Columna B = Referencia (posición fija)
+
+        # Buscar columna "empresa" dinámicamente (independiente de su posición)
+        col_emp = None
+        for col in df_header.columns:
+            if "empresa" in str(col).lower():
+                col_emp = col
+                print(f"✓ Columna 'empresa' encontrada: '{col}'")
+                break
+
+        if col_emp is None:
+            # Fallback a índice 16 (columna R) si no se encuentra por nombre
+            if len(df_header.columns) > 16:
+                col_emp = df_header.columns[16]
+                print(f"⚠ Aviso: Columna 'empresa' no encontrada. Usando columna índice 16: '{col_emp}'")
+            else:
+                print("❌ Error: Columna 'empresa' no encontrada.")
+                print(f"Columnas disponibles: {list(df_header.columns)}")
+                return pd.DataFrame(columns=['Referencia', 'Empresa', 'Cantidad'])
+
+        # Buscar la columna "resto" dinámicamente (independiente de su posición)
+        col_qty = None
+        for idx, col in enumerate(df_header.columns):
+            if "resto" in str(col).lower():
+                col_qty = col
+                print(f"✓ Columna 'resto' encontrada: '{col}' en posición {idx}")
+                break
+
+        if col_qty is None:
+            # Fallback a índice 30 si existe
+            if len(df_header.columns) > 30:
+                col_qty = df_header.columns[30]
+                print(f"⚠ Aviso: Columna 'resto' no encontrada. Usando columna índice 30: '{col_qty}'")
+            else:
+                print("❌ Error: Columna 'resto' no encontrada y archivo demasiado corto para índice 30.")
+                print(f"Columnas disponibles: {list(df_header.columns)}")
+                return pd.DataFrame(columns=['Referencia', 'Empresa', 'Cantidad'])
+
+        # Leer datos con las columnas identificadas
+        cols_to_use = list(set([col_ref, col_emp, col_qty]))
+        df = pd.read_excel(PATH_SONEPAR, usecols=cols_to_use)
+
+        result = pd.DataFrame()
+        result['Referencia'] = df[col_ref]
+        result['Empresa'] = df[col_emp]
+        result['Cantidad'] = df[col_qty]
+
+        result = result.dropna(subset=['Referencia'])
+
+        # Limpiar valores NaN
+        result['Cantidad'] = pd.to_numeric(result['Cantidad'], errors='coerce').fillna(0)
+        result['Empresa'] = result['Empresa'].fillna('')
+        result = result.replace([float('inf'), float('-inf')], 0)
+
+        print(f"✓ Archivo Sonepar leído correctamente: {len(result)} registros encontrados")
+
+        return result
+
     except Exception as e:
-        print(f"Error reading Sonepar: {e}")
+        print(f"❌ Error reading Sonepar: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame(columns=['Referencia', 'Empresa', 'Cantidad'])
+
+
+def read_sti():
+    """Lee el archivo ZOE STI.xlsx y extrae la columna 'código' dinámicamente."""
+    try:
+        df_header = pd.read_excel(PATH_STI, nrows=0)
+
+        # Buscar columna "código" dinámicamente
+        col_cod = None
+        for col in df_header.columns:
+            if "código" in str(col).lower() or "codigo" in str(col).lower() or "cod" == str(col).strip().lower():
+                col_cod = col
+                print(f"✓ Columna 'código' encontrada en STI: '{col}'")
+                break
+
+        if col_cod is None:
+            print(f"❌ Error: Columna 'código' no encontrada en STI.")
+            print(f"Columnas disponibles: {list(df_header.columns)}")
+            return pd.DataFrame(columns=['Referencia'])
+
+        df = pd.read_excel(PATH_STI, usecols=[col_cod])
+        result = pd.DataFrame()
+        result['Referencia'] = df[col_cod].astype(str).str.strip()
+        result = result[result['Referencia'].str.len() > 0]
+        result = result[result['Referencia'] != 'nan']
+
+        print(f"✓ Archivo STI leído correctamente: {len(result)} registros encontrados")
+        return result
+
+    except Exception as e:
+        print(f"❌ Error reading STI: {e}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame(columns=['Referencia'])
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -94,10 +199,23 @@ def upload_file():
         # Asegurar que reference sea string
         result_df['reference'] = result_df['reference'].astype(str).str.strip()
         
-        # Reemplazar NaN por 0 para evitar errores de JSON
+        # Convertir quantity a numérico y reemplazar NaN/errores por 0
+        result_df['quantity'] = pd.to_numeric(result_df['quantity'], errors='coerce').fillna(0)
+        
+        # Asegurar que no haya valores NaN, inf o -inf en ninguna columna
+        result_df = result_df.replace([float('inf'), float('-inf')], 0)
         result_df = result_df.fillna(0)
         
-        return jsonify(result_df.to_dict('records'))
+        # Convertir a diccionario y asegurar que todos los valores sean JSON-serializables
+        records = result_df.to_dict('records')
+        
+        # Limpieza final: asegurar que no hay NaN en los registros
+        for record in records:
+            for key, value in record.items():
+                if pd.isna(value) or value in [float('inf'), float('-inf')]:
+                    record[key] = 0 if key == 'quantity' else ''
+        
+        return jsonify(records)
 
     except Exception as e:
         print(f"Error processing upload: {e}")
@@ -108,9 +226,9 @@ def search():
     data = request.json
     # Puede recibir una lista de strings o una lista de objetos {reference, quantity}
     input_data = data.get('references', [])
-    
+
     if not input_data:
-        return jsonify({'inventario': [], 'sonepar': []})
+        return jsonify({'inventario': [], 'sonepar': [], 'sti': []})
 
     references_to_search = []
     qty_map = {}
@@ -129,35 +247,44 @@ def search():
 
     df_inv = read_inventario()
     df_son = read_sonepar()
+    df_sti = read_sti()
 
     # Convertir a mayúsculas para búsqueda exacta case-insensitive
     df_inv['Referencia_UC'] = df_inv['Referencia'].astype(str).str.strip().str.upper()
     df_son['Referencia_UC'] = df_son['Referencia'].astype(str).str.strip().str.upper()
+    df_sti['Referencia_UC'] = df_sti['Referencia'].astype(str).str.strip().str.upper()
 
-    # Filtrar resultados usando las referencias en mayúsculas y excluir stock 0
+    # Filtrar resultados
     res_inv = df_inv[df_inv['Referencia_UC'].isin(references_to_search)].to_dict('records')
     res_son = df_son[df_son['Referencia_UC'].isin(references_to_search)].to_dict('records')
+    res_sti_refs = set(df_sti[df_sti['Referencia_UC'].isin(references_to_search)]['Referencia'].tolist())
 
-    # Filtrar stock 0 (convertir a float por si acaso)
+    # Filtrar stock 0
     res_inv = [item for item in res_inv if float(item.get('Cantidad', 0)) > 0]
     res_son = [item for item in res_son if float(item.get('Cantidad', 0)) > 0]
 
     # Limpiar columnas temporales y añadir CantEncargo
     for item in res_inv:
         item.pop('Referencia_UC', None)
-        # Usar la referencia original o la buscada para el mapa
         ref_upper = str(item['Referencia']).strip().upper()
         item['CantEncargo'] = qty_map.get(ref_upper, 0)
-        
+        for key, value in item.items():
+            if pd.isna(value):
+                item[key] = 0 if key in ['Cantidad', 'CantEncargo'] else ''
+
     for item in res_son:
         item.pop('Referencia_UC', None)
         ref_upper = str(item['Referencia']).strip().upper()
         item['CantEncargo'] = qty_map.get(ref_upper, 0)
+        for key, value in item.items():
+            if pd.isna(value):
+                item[key] = 0 if key in ['Cantidad', 'CantEncargo'] else ''
 
     return jsonify({
         'inventario': res_inv,
-        'sonepar': res_son
+        'sonepar': res_son,
+        'sti': list(res_sti_refs)
     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    app.run(host='127.0.0.1', debug=True, port=5000)
