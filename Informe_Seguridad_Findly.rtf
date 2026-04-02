@@ -1,0 +1,29 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0\fnil\fcharset0 Arial;}{\f1\fnil\fcharset0 Arial Bold;}}
+{\colortbl ;\red3\green105\blue161;\red12\green74\blue110;}
+\viewkind4\uc1\pard\cf1\f1\fs36 Informe de Seguridad y Privacidad de Datos - Findly\cf0\f0\fs24\par
+\par
+Este informe detalla las razones t\'e9cnicas por las cuales la aplicaci\'f3n {\f1 Findly} no compromete la integridad ni la privacidad de los datos de la empresa, garantizando que la informaci\'f3n sensible nunca sale del entorno local.\par
+\par
+\pard\sb100\sa100\cf2\f1\fs28 1. Arquitectura de "Frontend Desacoplado"\cf0\f0\fs24\par
+Aunque la interfaz de usuario est\'e1 alojada en {\f1 Netlify}, esta act\'faa \'fanicamente como un "contenedor vac\'edo" o una "plantilla visual".\par
+- {\f1 Netlify no procesa datos:} Los servidores de Netlify solo entregan los archivos necesarios para mostrar la web.\par
+- {\f1 Sin base de datos externa:} No existe ninguna base de datos en la nube donde se almacenen referencias o stocks.\par
+\par
+\pard\sb100\sa100\cf2\f1\fs28 2. Procesamiento de Datos 100% Local\cf0\f0\fs24\par
+La aplicaci\'f3n utiliza un modelo de comunicaci\'f3n punto a punto entre el navegador del usuario y un servidor local dentro de la red de la empresa.\par
+- {\f1 Servidor Backend Local:} Todas las operaciones se realizan en la direcci\'f3n IP privada {\f1 172.30.0.161}.\par
+- {\f1 Rutas de Red Internas:} El servidor accede a archivos de Excel locales (ej. \\\\172.30.0.10\\Logistica\\...). Estos archivos nunca se suben a internet.\par
+- {\f1 Carga de Archivos:} Los archivos de pedido se env\'edan directamente al servidor interno, sin pasar por servidores externos.\par
+\par
+\pard\sb100\sa100\cf2\f1\fs28 3. Aislamiento de Internet\cf0\f0\fs24\par
+1. {\f1 Sin Exfiltraci\'f3n:} El c\'f3digo no contiene llamadas a APIs de terceros ni servicios de an\'e1lisis.\par
+2. {\f1 Operaci\'f3n en Red Privada:} La l\'f3gica de negocio reside totalmente dentro de la red de la oficina.\par
+3. {\f1 Privacidad por Dise\'f1o:} Los datos se procesan en la memoria del servidor local y permanecen bajo el control de la empresa.\par
+\par
+\pard\sb100\sa100\cf2\f1\fs28 4. Conclusi\'f3n\cf0\f0\fs24\par
+La aplicaci\'f3n {\f1 Findly} visualiza datos de forma segura, manteniendo una barrera infranqueable hacia internet. La informaci\'f3n de negocio permanece en sus propios servidores.\par
+\par
+\pard\qc\fs20\i Elaborado para el equipo de IT y Direcci\'f3n.\par
+Fecha: 28 de enero de 2026\i0\par
+}

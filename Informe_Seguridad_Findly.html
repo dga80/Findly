@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe de Seguridad - Findly</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #0369a1;
+            border-bottom: 2px solid #0369a1;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #0c4a6e;
+            margin-top: 30px;
+        }
+
+        .highlight {
+            background-color: #e0f2fe;
+            padding: 15px;
+            border-left: 4px solid #0369a1;
+            margin: 20px 0;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Informe de Seguridad y Privacidad de Datos - Findly</h1>
+        <p>Este informe detalla las razones técnicas por las cuales la aplicación <strong>Findly</strong> no compromete
+            la integridad ni la privacidad de los datos de la empresa, garantizando que la información sensible nunca
+            sale del entorno local.</p>
+
+        <hr>
+
+        <h2>1. Arquitectura de "Frontend Desacoplado"</h2>
+        <p>Aunque la interfaz de usuario está alojada en <strong>Netlify</strong>, esta actúa únicamente como un
+            "contenedor vacío" o una "plantilla visual".</p>
+        <ul>
+            <li><strong>Netlify no procesa datos:</strong> Los servidores de Netlify solo entregan los archivos
+                necesarios para mostrar la web.</li>
+            <li><strong>Sin base de datos externa:</strong> No existe ninguna base de datos en la nube donde se
+                almacenen referencias o stocks.</li>
+        </ul>
+
+        <h2>2. Procesamiento de Datos 100% Local</h2>
+        <div class="highlight">
+            <p>La aplicación utiliza un modelo de comunicación punto a punto entre el navegador del usuario y un
+                servidor local dentro de la red de la empresa.</p>
+        </div>
+        <ul>
+            <li><strong>Servidor Backend Local:</strong> Todas las operaciones se realizan en la dirección IP privada
+                <strong>172.30.0.161</strong>.</li>
+            <li><strong>Rutas de Red Internas:</strong> El servidor accede a archivos de Excel locales (ej.
+                <code>\\172.30.0.10\Logistica\...</code>). Estos archivos nunca se suben a internet.</li>
+            <li><strong>Carga de Archivos:</strong> Los archivos de pedido se envían directamente al servidor interno,
+                sin pasar por servidores externos.</li>
+        </ul>
+
+        <h2>3. Aislamiento de Internet</h2>
+        <ol>
+            <li><strong>Sin Exfiltración:</strong> El código no contiene llamadas a APIs de terceros ni servicios de
+                análisis.</li>
+            <li><strong>Operación en Red Privada:</strong> La lógica de negocio reside totalmente dentro de la red de la
+                oficina.</li>
+            <li><strong>Privacidad por Diseño:</strong> Los datos se procesan en la memoria del servidor local y
+                permanecen bajo el control de la empresa.</li>
+        </ol>
+
+        <hr>
+
+        <h2>4. Conclusión</h2>
+        <p>La aplicación <strong>Findly</strong> visualiza datos de forma segura, manteniendo una barrera infranqueable
+            hacia internet. La información de negocio permanece en sus propios servidores.</p>
+
+        <footer>
+            Elaborado para el equipo de IT y Dirección.<br>
+            Fecha: 28 de enero de 2026
+        </footer>
+    </div>
+</body>
+
+</html>

@@ -224,152 +224,148 @@ document.getElementById('exportStockBtn').addEventListener('click', () => {
 
 document.getElementById('exportPdfBtn').addEventListener('click', () => {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const doc = new jsPDF('l', 'mm', 'a4'); // Paisaje
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    // Colores corporativos
-    const primaryColor = [30, 41, 59]; // #1e293b (Azul oscuro)
-    const accentColor = [37, 99, 235];  // #2563eb (Azul primario)
-    const highlightColor = [224, 231, 255]; // #e0e7ff (Azul muy claro para comunes)
-    const highlightTextColor = [30, 58, 138]; // #1e3a8a (Texto azul oscuro para comunes)
+    const primaryColor = [30, 41, 59];
+    const accentColor = [37, 99, 235];
+    const highlightColor = [224, 231, 255];
+    const highlightTextColor = [30, 58, 138];
 
-    // Identificar referencias duplicadas para el resaltado
+    // Referencias comunes
     const invRefsSet = new Set(searchResults.inventario.map(item => String(item.Referencia).trim().toUpperCase()));
     const sonRefsSet = new Set(searchResults.sonepar.map(item => String(item.Referencia).trim().toUpperCase()));
-    
-    // Referencias comunes
     const commonRefs = new Set([...invRefsSet].filter(x => sonRefsSet.has(x)));
 
-    // Título y Cabecera
+    // Cabecera: Título con nombre de archivo
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...primaryColor);
+    let titleName = selectedFile ? selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) : "Manual";
+    doc.text(`${titleName} / Informe de Stock`, 10, 15);
     
-    let titleName = "Manual";
-    if (selectedFile) {
-        titleName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
-    }
-    doc.text(`${titleName} Informe de Stock`, 15, 20);
-    
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
     const dateStr = new Date().toLocaleString('es-ES', { 
-        day: '2-digit', month: '2-digit', year: 'numeric', 
-        hour: '2-digit', minute: '2-digit' 
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
     });
-    doc.text(`Generado: ${dateStr}`, 15, 27);
+    doc.text(`Generado: ${dateStr}`, 10, 20);
     
     doc.setDrawColor(...accentColor);
-    doc.setLineWidth(0.5);
-    doc.line(15, 32, pageWidth - 15, 32);
+    doc.setLineWidth(0.4);
+    doc.line(10, 23, pageWidth - 10, 23);
 
     // Leyenda
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(...highlightTextColor);
-    doc.text("* Las filas resaltadas en azul indican referencias presentes en ambos stocks (Cerdanya y Sonepar).", 15, 38);
+    doc.text("* Filas en azul: referencias en ambos stocks (Cerdanya y Sonepar).", 10, 28);
 
-    let currentY = 48;
+    // --- CONFIGURACIÓN DE 3 COLUMNAS SIDE-BY-SIDE ---
+    const startY = 32;
+    const paddingX = 10;
+    const colWidth = 90; // Ancho fijo estrecho para evitar "estiramientos"
+    const gap = 5;
 
-    // --- SECCIÓN 1: INVENTARIO CERDANYA ---
-    if (searchResults.inventario.length > 0) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(...accentColor);
-        doc.text("Inventario Cerdanya", 15, currentY);
-        currentY += 4;
+    // Tabla 1: Cerdanya
+    doc.setFontSize(11);
+    doc.setTextColor(...accentColor);
+    doc.text("Inventario Cerdanya", paddingX, startY + 5);
 
-        doc.autoTable({
-            startY: currentY,
-            margin: { left: 15, right: 15 },
-            head: [['Referencia', 'Ubicación', 'Cantidad', 'Cant. Encargo']],
-            body: searchResults.inventario.map(item => [
-                item.Referencia,
-                item.Ubicacion || '-',
-                item.Cantidad,
-                item.CantEncargo || '-'
-            ]),
-            theme: 'grid',
-            headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
-            styles: { fontSize: 8, cellPadding: 2 },
-            didParseCell: (data) => {
-                if (data.section === 'body' && data.row.raw) {
-                    const ref = String(data.row.raw[0]).trim().toUpperCase();
-                    if (commonRefs.has(ref)) {
-                        data.cell.styles.fillColor = highlightColor;
-                        data.cell.styles.textColor = highlightTextColor;
-                        data.cell.styles.fontStyle = 'bold';
-                    }
+    doc.autoTable({
+        startY: startY + 8,
+        margin: { left: paddingX },
+        tableWidth: colWidth,
+        head: [['Ref', 'Ubic', 'Cant', 'Enc', 'Obs']],
+        body: searchResults.inventario.map(item => [
+            item.Referencia, 
+            item.Ubicacion || '-', 
+            item.Cantidad, 
+            item.CantEncargo || '-',
+            ''
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 7, cellPadding: 1 },
+        styles: { fontSize: 6.5, cellPadding: 0.8 },
+        columnStyles: {
+            0: { cellWidth: 30 }, // Ref
+            1: { cellWidth: 15 }, // Ubic
+            2: { cellWidth: 10, halign: 'center' }, // Cant
+            3: { cellWidth: 10, halign: 'center' }, // Enc
+            4: { cellWidth: 25 }  // Obs
+        },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.raw) {
+                const ref = String(data.row.raw[0]).trim().toUpperCase();
+                if (commonRefs.has(ref)) {
+                    data.cell.styles.fillColor = highlightColor;
+                    data.cell.styles.textColor = highlightTextColor;
+                    data.cell.styles.fontStyle = 'bold';
                 }
             }
-        });
-        currentY = doc.lastAutoTable.finalY + 12;
-    }
+        }
+    });
 
-    // --- SECCIÓN 2: STOCK SONEPAR ---
-    if (searchResults.sonepar.length > 0) {
-        // Salto de página si es necesario
-        if (currentY > 260) { doc.addPage(); currentY = 20; }
+    // Tabla 2: Sonepar (Misma posición Y)
+    const soneparX = paddingX + colWidth + gap;
+    doc.setFontSize(11);
+    doc.setTextColor(...accentColor);
+    doc.text("Stock Sonepar", soneparX, startY + 5);
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(...accentColor);
-        doc.text("Stock Sonepar", 15, currentY);
-        currentY += 4;
-
-        doc.autoTable({
-            startY: currentY,
-            margin: { left: 15, right: 15 },
-            head: [['Referencia', 'Empresa', 'Cantidad', 'Cant. Encargo']],
-            body: searchResults.sonepar.map(item => [
-                item.Referencia,
-                item.Empresa || '-',
-                item.Cantidad,
-                item.CantEncargo || '-'
-            ]),
-            theme: 'grid',
-            headStyles: { fillColor: [15, 118, 110], textColor: 255, fontSize: 9 }, // Color verde oscuro para diferenciar
-            styles: { fontSize: 8, cellPadding: 2 },
-            didParseCell: (data) => {
-                if (data.section === 'body' && data.row.raw) {
-                    const ref = String(data.row.raw[0]).trim().toUpperCase();
-                    if (commonRefs.has(ref)) {
-                        data.cell.styles.fillColor = highlightColor;
-                        data.cell.styles.textColor = highlightTextColor;
-                        data.cell.styles.fontStyle = 'bold';
-                    }
+    doc.autoTable({
+        startY: startY + 8,
+        margin: { left: soneparX },
+        tableWidth: colWidth,
+        head: [['Ref', 'Empresa', 'Cant', 'Enc', 'Obs']],
+        body: searchResults.sonepar.map(item => [
+            item.Referencia, 
+            item.Empresa || '-', 
+            item.Cantidad, 
+            item.CantEncargo || '-',
+            ''
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontSize: 7, cellPadding: 1 },
+        styles: { fontSize: 6.5, cellPadding: 0.8 },
+        columnStyles: {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 15 },
+            2: { cellWidth: 10, halign: 'center' },
+            3: { cellWidth: 10, halign: 'center' },
+            4: { cellWidth: 25 }
+        },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.raw) {
+                const ref = String(data.row.raw[0]).trim().toUpperCase();
+                if (commonRefs.has(ref)) {
+                    data.cell.styles.fillColor = highlightColor;
+                    data.cell.styles.textColor = highlightTextColor;
+                    data.cell.styles.fontStyle = 'bold';
                 }
             }
-        });
-        currentY = doc.lastAutoTable.finalY + 12;
-    }
+        }
+    });
 
-    // --- SECCIÓN 3: STOCK STI ---
-    if (searchResults.sti && searchResults.sti.length > 0) {
-        if (currentY > 260) { doc.addPage(); currentY = 20; }
+    // Tabla 3: STI (Misma posición Y)
+    const stiX = soneparX + colWidth + gap;
+    doc.setFontSize(11);
+    doc.setTextColor(21, 128, 61);
+    doc.text("Stock STI", stiX, startY + 5);
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(21, 128, 61); // #15803d
-        doc.text("Stock STI", 15, currentY);
-        currentY += 4;
+    doc.autoTable({
+        startY: startY + 8,
+        margin: { left: stiX },
+        tableWidth: 35, // Ancho fijo para que no sobre espacio
+        head: [['Ref']],
+        body: (searchResults.sti || []).map(ref => [ref]),
+        theme: 'grid',
+        headStyles: { fillColor: [21, 128, 61], textColor: 255, fontSize: 7, cellPadding: 1 },
+        styles: { fontSize: 6.5, cellPadding: 0.8 }
+    });
 
-        doc.autoTable({
-            startY: currentY,
-            margin: { left: 15, right: 15 },
-            head: [['Referencia', 'Estado']],
-            body: searchResults.sti.map(ref => [ref, '✔ Disponible']),
-            theme: 'grid',
-            headStyles: { fillColor: [21, 128, 61], textColor: 255, fontSize: 9 },
-            styles: { fontSize: 8, cellPadding: 2 }
-        });
-    }
-
-    let fileName = "Informe_Stock_Findly.pdf";
-    if (selectedFile) {
-        const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
-        fileName = `${baseName}_INFORME_STOCK.pdf`;
-    }
+    let fileName = selectedFile 
+        ? `${selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'))}_STOCK.pdf` 
+        : "Informe_Stock.pdf";
     doc.save(fileName);
 });
