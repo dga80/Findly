@@ -32,12 +32,22 @@
             </div>
 
             <div id="uploadInputContainer" class="input-container">
-                <div class="file-drop-zone" id="dropZone">
-                    <input type="file" id="fileInput" accept=".xlsx, .xls" hidden>
-                    <p>Arrastra tu Excel aquí o <span class="browse">selecciona un archivo</span></p>
-                    <div id="fileInfo" class="hidden">
-                        <span class="file-name"></span>
-                        <button id="clearFile" class="btn-icon">×</button>
+                <div class="upload-grid">
+                    <div class="file-drop-zone" id="dropZone">
+                        <input type="file" id="fileInput" accept=".xlsx, .xls" hidden>
+                        <p>Excel Principal <br><span class="browse">selecciona un archivo</span></p>
+                        <div id="fileInfo" class="hidden">
+                            <span class="file-name"></span>
+                            <button id="clearFile" class="btn-icon">×</button>
+                        </div>
+                    </div>
+                    <div class="file-drop-zone" id="addedStockDropZone">
+                        <input type="file" id="addedStockInput" accept=".xlsx, .xls" hidden>
+                        <p>Stock Dinámico <br><span class="browse">selecciona un archivo</span></p>
+                        <div id="addedStockInfo" class="hidden">
+                            <span class="file-name"></span>
+                            <button id="clearAddedStock" class="btn-icon">×</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -55,7 +65,7 @@
             <div class="legend-container">
                 <div class="legend-item">
                     <div class="legend-box common"></div>
-                    <span>Referencia existente en ambos stocks</span>
+                    <span>En Cerdanya y Sonepar (o STI/Dinámico presente)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-box encargo"></div>
@@ -64,7 +74,7 @@
             </div>
             <div class="results-grid">
                 <div class="result-card">
-                    <h2>Inventario Cerdanya</h2>
+                    <h2>Stock Cerdanya</h2>
                     <div class="table-container">
                         <table id="invTable">
                             <thead>
@@ -112,6 +122,31 @@
                                 <tr>
                                     <th>Referencia</th>
                                     <th>En STI</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="result-card dynamic-card">
+                    <h2>
+                        <svg class="icon-basket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12V7H5L3 12V21H12"/>
+                            <path d="M3 12H21"/>
+                            <path d="M16 5V7"/>
+                            <path d="M13 5V7"/>
+                            <circle cx="18" cy="18" r="3"/>
+                            <path d="M18 15V18H21"/>
+                        </svg>
+                        Stock Dinámico
+                    </h2>
+                    <div class="table-container">
+                        <table id="dynamicTable">
+                            <thead>
+                                <tr>
+                                    <th>Referencia</th>
+                                    <th>Cantidad</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>

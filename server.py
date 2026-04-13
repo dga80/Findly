@@ -226,9 +226,10 @@ def search():
     data = request.json
     # Puede recibir una lista de strings o una lista de objetos {reference, quantity}
     input_data = data.get('references', [])
+    added_stock_input = data.get('addedStock', [])
 
     if not input_data:
-        return jsonify({'inventario': [], 'sonepar': [], 'sti': []})
+        return jsonify({'inventario': [], 'sonepar': [], 'sti': [], 'addedStock': []})
 
     references_to_search = []
     qty_map = {}
@@ -245,6 +246,14 @@ def search():
             references_to_search.append(ref)
             qty_map[ref] = qty_map.get(ref, 0) + float(qty)
 
+    # Procesar Stock Añadido (Dinámico)
+    added_stock_map = {}
+    for item in added_stock_input:
+        ref = str(item.get('reference', '')).strip().upper()
+        qty = item.get('quantity', 0)
+        if ref:
+            added_stock_map[ref] = added_stock_map.get(ref, 0) + float(qty)
+
     df_inv = read_inventario()
     df_son = read_sonepar()
     df_sti = read_sti()
@@ -254,10 +263,22 @@ def search():
     df_son['Referencia_UC'] = df_son['Referencia'].astype(str).str.strip().str.upper()
     df_sti['Referencia_UC'] = df_sti['Referencia'].astype(str).str.strip().str.upper()
 
-    # Filtrar resultados
+    # Filtrar resultados de archivos fijos
     res_inv = df_inv[df_inv['Referencia_UC'].isin(references_to_search)].to_dict('records')
     res_son = df_son[df_son['Referencia_UC'].isin(references_to_search)].to_dict('records')
     res_sti_refs = set(df_sti[df_sti['Referencia_UC'].isin(references_to_search)]['Referencia'].tolist())
+
+    # Filtrar resultados de Stock Añadido
+    res_added = []
+    # Usamos set para evitar duplicados si la misma referencia está varias veces en la búsqueda
+    unique_refs_to_search = set(references_to_search)
+    for ref in unique_refs_to_search:
+        if ref in added_stock_map and added_stock_map[ref] > 0:
+            res_added.append({
+                'Referencia': ref,
+                'Cantidad': added_stock_map[ref],
+                'CantEncargo': qty_map.get(ref, 0)
+            })
 
     # Filtrar stock 0
     res_inv = [item for item in res_inv if float(item.get('Cantidad', 0)) > 0]
@@ -283,7 +304,8 @@ def search():
     return jsonify({
         'inventario': res_inv,
         'sonepar': res_son,
-        'sti': list(res_sti_refs)
+        'sti': list(res_sti_refs),
+        'addedStock': res_added
     })
 
 if __name__ == '__main__':

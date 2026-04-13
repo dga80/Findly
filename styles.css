@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -161,7 +161,7 @@ textarea:focus {
 
 .results-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1rem;
 }
 
@@ -218,6 +218,23 @@ textarea:focus {
     font-size: 0.75rem;
 }
 
+.dynamic-card {
+    border: 2px solid #bae6fd;
+    background-color: #f0f9ff;
+}
+
+.dynamic-card h2 {
+    color: #0369a1;
+    border-bottom-color: #bae6fd;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dynamic-card .icon-basket {
+    color: #0369a1;
+}
+
 .result-card h2 {
     font-size: 1.25rem;
     margin-bottom: 1rem;
@@ -264,10 +281,22 @@ table {
     background: rgba(37, 99, 235, 0.1);
 }
 
+.upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .upload-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .file-drop-zone {
     border: 2px dashed var(--border-color);
     border-radius: 0.5rem;
-    padding: 2rem;
+    padding: 1.5rem;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
@@ -286,7 +315,7 @@ table {
     text-decoration: underline;
 }
 
-#fileInfo {
+#fileInfo, #addedStockInfo {
     margin-top: 1rem;
     padding: 0.5rem;
     background: #e2e8f0;
@@ -294,6 +323,14 @@ table {
     display: inline-flex;
     align-items: center;
     gap: 1rem;
+    max-width: 100%;
+}
+
+#fileInfo .file-name, #addedStockInfo .file-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.8rem;
 }
 
 .btn-icon {

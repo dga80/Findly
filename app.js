@@ -1,6 +1,8 @@
-let searchResults = { inventario: [], sonepar: [], sti: [] };
+let searchResults = { inventario: [], sonepar: [], sti: [], addedStock: [] };
 let selectedFile = null;
+let addedStockFile = null;
 let currentInputData = [];
+let currentAddedStockData = [];
 
 // Tab logic — "Subir Excel" activo por defecto
 document.getElementById('manualTab').addEventListener('click', () => {
@@ -61,6 +63,51 @@ document.getElementById('clearFile').addEventListener('click', (e) => {
     fileInfo.classList.add('hidden');
 });
 
+// Added Stock File upload logic
+const addedStockDropZone = document.getElementById('addedStockDropZone');
+const addedStockInput = document.getElementById('addedStockInput');
+const addedStockInfo = document.getElementById('addedStockInfo');
+const addedStockNameSpan = addedStockInfo.querySelector('.file-name');
+
+addedStockDropZone.addEventListener('click', () => addedStockInput.click());
+
+addedStockInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleAddedStockFile(e.target.files[0]);
+    }
+});
+
+addedStockDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    addedStockDropZone.classList.add('drag-over');
+});
+
+addedStockDropZone.addEventListener('dragleave', () => {
+    addedStockDropZone.classList.remove('drag-over');
+});
+
+addedStockDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    addedStockDropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length > 0) {
+        handleAddedStockFile(e.dataTransfer.files[0]);
+    }
+});
+
+function handleAddedStockFile(file) {
+    addedStockFile = file;
+    addedStockNameSpan.textContent = file.name;
+    addedStockInfo.classList.remove('hidden');
+}
+
+document.getElementById('clearAddedStock').addEventListener('click', (e) => {
+    e.stopPropagation();
+    addedStockFile = null;
+    addedStockInput.value = '';
+    addedStockInfo.classList.add('hidden');
+    currentAddedStockData = [];
+});
+
 document.getElementById('searchBtn').addEventListener('click', async () => {
     let references = [];
     const isManual = !document.getElementById('manualInputContainer').classList.contains('hidden');
@@ -97,12 +144,30 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
             references = currentInputData;
         }
 
+        // Subir Stock Dinámico si existe
+        if (addedStockFile) {
+            const formDataAdded = new FormData();
+            formDataAdded.append('file', addedStockFile);
+            const uploadAddedRes = await fetch('http://localhost:5000/upload', {
+                method: 'POST',
+                body: formDataAdded
+            });
+            if (uploadAddedRes.ok) {
+                currentAddedStockData = await uploadAddedRes.json();
+            }
+        } else {
+            currentAddedStockData = [];
+        }
+
         const response = await fetch('http://localhost:5000/search', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ references })
+            body: JSON.stringify({ 
+                references,
+                addedStock: currentAddedStockData
+            })
         });
 
         if (!response.ok) throw new Error('Error en la búsqueda');
@@ -146,17 +211,23 @@ function renderTables() {
 
     updateHeaders('invTable');
     updateHeaders('sonTable');
+    updateHeaders('dynamicTable');
 
-    // Identificar referencias duplicadas en ambos listados
+    // Identificar referencias duplicadas en los listados
     const invRefs = new Set(searchResults.inventario.map(item => String(item.Referencia).trim().toUpperCase()));
-    const repeatRefs = new Set(searchResults.sonepar
-        .map(item => String(item.Referencia).trim().toUpperCase())
-        .filter(ref => invRefs.has(ref)));
+    const sonRefs = new Set(searchResults.sonepar.map(item => String(item.Referencia).trim().toUpperCase()));
+    const stiRefs = new Set((searchResults.sti || []).map(r => String(r).trim().toUpperCase()));
+    const addedRefs = new Set((searchResults.addedStock || []).map(item => String(item.Referencia).trim().toUpperCase()));
+
+    // Coincidencias entre Cerdanya y Sonepar (para sus tablas correspondientes)
+    const commonCerSon = new Set([...invRefs].filter(ref => sonRefs.has(ref)));
+    // Coincidencias para STI/Dinámico (si están en alguno de los anteriores)
+    const commonOther = new Set([...new Set([...stiRefs, ...addedRefs])].filter(ref => invRefs.has(ref) || sonRefs.has(ref)));
 
     // Renderizar Inventario Cerdanya
     invTableBody.innerHTML = searchResults.inventario.length > 0
         ? searchResults.inventario.map(item => {
-            const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
+            const isRepeat = commonCerSon.has(String(item.Referencia).trim().toUpperCase());
             return `
                 <tr>
                     <td>${item.Referencia}</td>
@@ -171,7 +242,7 @@ function renderTables() {
     // Renderizar Stock Sonepar
     sonTableBody.innerHTML = searchResults.sonepar.length > 0
         ? searchResults.sonepar.map(item => {
-            const isRepeat = repeatRefs.has(String(item.Referencia).trim().toUpperCase());
+            const isRepeat = commonCerSon.has(String(item.Referencia).trim().toUpperCase());
             return `
                 <tr>
                     <td>${item.Referencia}</td>
@@ -195,13 +266,31 @@ function renderTables() {
     const stiRows = allRefs.filter(ref => stiSet.has(ref.toUpperCase()));
 
     stiTableBody.innerHTML = stiRows.length > 0
-        ? stiRows.map(ref => `
-            <tr>
-                <td>${ref}</td>
-                <td><span class="sti-badge">✔ Disponible</span></td>
-            </tr>
-        `).join('')
+        ? stiRows.map(ref => {
+            const isRepeat = commonOther.has(String(ref).trim().toUpperCase());
+            return `
+                <tr>
+                    <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${ref}</span></td>
+                    <td><span class="sti-badge">✔ Disponible</span></td>
+                </tr>
+            `;
+        }).join('')
         : '<tr><td colspan="2" style="text-align:center">Sin coincidencias en STI</td></tr>';
+
+    // Renderizar Stock Dinámico
+    const dynamicTableBody = document.querySelector('#dynamicTable tbody');
+    dynamicTableBody.innerHTML = searchResults.addedStock.length > 0
+        ? searchResults.addedStock.map(item => {
+            const isRepeat = commonOther.has(String(item.Referencia).trim().toUpperCase());
+            return `
+                <tr>
+                    <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Referencia}</span></td>
+                    <td><span class="${isRepeat ? 'common-stock-badge' : ''}">${item.Cantidad}</span></td>
+                    <td><span class="cant-encargo">${item.CantEncargo || '-'}</span></td>
+                </tr>
+            `;
+        }).join('')
+        : '<tr><td colspan="3" style="text-align:center">Sin coincidencias en Stock Dinámico</td></tr>';
 }
 
 document.getElementById('exportStockBtn').addEventListener('click', () => {
@@ -215,6 +304,9 @@ document.getElementById('exportStockBtn').addEventListener('click', () => {
     if ((searchResults.sti || []).length > 0) {
         const stiExport = searchResults.sti.map(ref => ({ Referencia: ref, 'En STI': 'Sí' }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stiExport), "Stock STI");
+    }
+    if (searchResults.addedStock.length > 0) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(searchResults.addedStock), "Stock Dinámico");
     }
 
     let fileName = "Findly_Stock.xlsx";
@@ -235,10 +327,14 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
     const highlightColor = [224, 231, 255];
     const highlightTextColor = [30, 58, 138];
 
-    // Referencias comunes
+    // Coincidencias entre Cerdanya y Sonepar
     const invRefsSet = new Set(searchResults.inventario.map(item => String(item.Referencia).trim().toUpperCase()));
     const sonRefsSet = new Set(searchResults.sonepar.map(item => String(item.Referencia).trim().toUpperCase()));
-    const commonRefs = new Set([...invRefsSet].filter(x => sonRefsSet.has(x)));
+    const stiRefsSet = new Set((searchResults.sti || []).map(r => String(r).trim().toUpperCase()));
+    const addedRefsSet = new Set(searchResults.addedStock.map(item => String(item.Referencia).trim().toUpperCase()));
+    
+    const commonCerSon = new Set([...invRefsSet].filter(ref => sonRefsSet.has(ref)));
+    const commonWithOther = new Set([...new Set([...stiRefsSet, ...addedRefsSet])].filter(ref => invRefsSet.has(ref) || sonRefsSet.has(ref)));
 
     // Cabecera: Título con nombre de archivo
     doc.setFont("helvetica", "bold");
@@ -263,13 +359,13 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(...highlightTextColor);
-    doc.text("* Filas en azul: referencias en ambos stocks (Cerdanya y Sonepar).", 10, 28);
+    doc.text("* Filas en azul: En Cerdanya y Sonepar (o STI/Dinámico presente).", 10, 28);
 
-    // --- CONFIGURACIÓN DE 3 COLUMNAS SIDE-BY-SIDE ---
+    // --- CONFIGURACIÓN DE 4 COLUMNAS SIDE-BY-SIDE ---
     const startY = 32;
     const paddingX = 10;
-    const colWidth = 90; // Ancho fijo estrecho para evitar "estiramientos"
-    const gap = 5;
+    const colWidth = 65; // Reducido para 4 columnas
+    const gap = 4;
 
     // Tabla 1: Cerdanya
     doc.setFontSize(11);
@@ -292,16 +388,16 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
         headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 7, cellPadding: 1 },
         styles: { fontSize: 6.5, cellPadding: 0.8 },
         columnStyles: {
-            0: { cellWidth: 30 }, // Ref
-            1: { cellWidth: 15 }, // Ubic
-            2: { cellWidth: 10, halign: 'center' }, // Cant
-            3: { cellWidth: 10, halign: 'center' }, // Enc
-            4: { cellWidth: 25 }  // Obs
+            0: { cellWidth: 22 }, // Ref
+            1: { cellWidth: 10 }, // Ubic
+            2: { cellWidth: 8, halign: 'center' }, // Cant
+            3: { cellWidth: 8, halign: 'center' }, // Enc
+            4: { cellWidth: 17 }  // Obs
         },
         didParseCell: (data) => {
             if (data.section === 'body' && data.row.raw) {
                 const ref = String(data.row.raw[0]).trim().toUpperCase();
-                if (commonRefs.has(ref)) {
+                if (commonCerSon.has(ref)) {
                     data.cell.styles.fillColor = highlightColor;
                     data.cell.styles.textColor = highlightTextColor;
                     data.cell.styles.fontStyle = 'bold';
@@ -332,16 +428,16 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
         headStyles: { fillColor: [15, 118, 110], textColor: 255, fontSize: 7, cellPadding: 1 },
         styles: { fontSize: 6.5, cellPadding: 0.8 },
         columnStyles: {
-            0: { cellWidth: 30 },
-            1: { cellWidth: 15 },
-            2: { cellWidth: 10, halign: 'center' },
-            3: { cellWidth: 10, halign: 'center' },
-            4: { cellWidth: 25 }
+            0: { cellWidth: 22 },
+            1: { cellWidth: 10 },
+            2: { cellWidth: 8, halign: 'center' },
+            3: { cellWidth: 8, halign: 'center' },
+            4: { cellWidth: 17 }
         },
         didParseCell: (data) => {
             if (data.section === 'body' && data.row.raw) {
                 const ref = String(data.row.raw[0]).trim().toUpperCase();
-                if (commonRefs.has(ref)) {
+                if (commonCerSon.has(ref)) {
                     data.cell.styles.fillColor = highlightColor;
                     data.cell.styles.textColor = highlightTextColor;
                     data.cell.styles.fontStyle = 'bold';
@@ -359,12 +455,60 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
     doc.autoTable({
         startY: startY + 8,
         margin: { left: stiX },
-        tableWidth: 35, // Ancho fijo para que no sobre espacio
+        tableWidth: 30, // Reducido
         head: [['Ref']],
         body: (searchResults.sti || []).map(ref => [ref]),
         theme: 'grid',
         headStyles: { fillColor: [21, 128, 61], textColor: 255, fontSize: 7, cellPadding: 1 },
-        styles: { fontSize: 6.5, cellPadding: 0.8 }
+        styles: { fontSize: 6.5, cellPadding: 0.8 },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.raw) {
+                const ref = String(data.row.raw[0]).trim().toUpperCase();
+                if (commonWithOther.has(ref)) {
+                    data.cell.styles.fillColor = highlightColor;
+                    data.cell.styles.textColor = highlightTextColor;
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        }
+    });
+
+    // Tabla 4: STOCK DINÁMICO
+    const dynamicX = stiX + 30 + gap;
+    doc.setFontSize(11);
+    doc.setTextColor(3, 105, 161);
+    doc.text("Stock Dinámico", dynamicX, startY + 5);
+
+    doc.autoTable({
+        startY: startY + 8,
+        margin: { left: dynamicX },
+        tableWidth: colWidth,
+        head: [['Ref', 'Cant', 'Enc', 'Obs']],
+        body: searchResults.addedStock.map(item => [
+            item.Referencia, 
+            item.Cantidad, 
+            item.CantEncargo || '-',
+            ''
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [3, 105, 161], textColor: 255, fontSize: 7, cellPadding: 1 },
+        styles: { fontSize: 6.5, cellPadding: 0.8 },
+        columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 10, halign: 'center' },
+            2: { cellWidth: 10, halign: 'center' },
+            3: { cellWidth: 20 }
+        },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.raw) {
+                const ref = String(data.row.raw[0]).trim().toUpperCase();
+                if (commonWithOther.has(ref)) {
+                    data.cell.styles.fillColor = highlightColor;
+                    data.cell.styles.textColor = highlightTextColor;
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        }
     });
 
     let fileName = selectedFile 
