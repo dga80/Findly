@@ -144,83 +144,100 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     try:
-        df = pd.read_excel(file)
-        
-        # Heurística para encontrar columnas
-        ref_col = None
-        qty_col = None
+        # Leer el archivo inicialmente sin asumir cabeceras para buscar la fila correcta
+        df_raw = pd.read_excel(file, header=None)
         
         # Listas de palabras clave (ordenadas por prioridad/especificidad)
-        ref_keywords = ['referencia', 'ref', 'código', 'codigo', 'cod', 'articulo', 'item', 'part number', 'p/n']
-        qty_keywords = ['cantidad', 'cant', 'qty', 'stock', 'units', 'uds', 'unid', 'unidad', 'unidades', 'cantidad pedida', 'disponible', 'resto']
+        ref_keywords = ['referencia', 'ref', 'código', 'codigo', 'cod', 'articulo', 'item', 'part number', 'p/n', 'etiquetas de fila', 'fila']
+        qty_keywords = ['cantidad', 'cant', 'qty', 'stock', 'units', 'uds', 'unid', 'unidad', 'unidades', 'cantidad pedida', 'disponible', 'resto', 'suma de cantidad', 'total']
         
-        # Limpiar nombres de columnas para comparación
-        cols_original = list(df.columns)
-        cols_clean = [str(c).lower().strip() for c in cols_original]
+        ref_col_idx = None
+        qty_col_idx = None
+        header_row_idx = -1
 
-        # 1. Buscar columna de REFERENCIA
-        # Prioridad 1: Coincidencia exacta
-        for kw in ref_keywords:
-            if kw in cols_clean:
-                ref_col = cols_original[cols_clean.index(kw)]
-                break
-        
-        # Prioridad 2: Coincidencia parcial (subcadena)
-        if not ref_col:
+        # 1. Buscar fila de cabecera en las primeras 15 filas
+        for i in range(min(15, len(df_raw))):
+            row_clean = [str(c).lower().strip() for c in df_raw.iloc[i]]
+            
+            # Buscar Ref
+            r_idx = -1
             for kw in ref_keywords:
-                for i, col_c in enumerate(cols_clean):
-                    if kw in col_c:
-                        ref_col = cols_original[i]
-                        break
-                if ref_col: break
+                for j, val in enumerate(row_clean):
+                    if kw == val: # Exacto primero
+                        r_idx = j; break
+                if r_idx != -1: break
+            if r_idx == -1:
+                for kw in ref_keywords:
+                    for j, val in enumerate(row_clean):
+                        if kw in val: # Luego parcial
+                            r_idx = j; break
+                    if r_idx != -1: break
 
-        # 2. Buscar columna de CANTIDAD
-        # Prioridad 1: Coincidencia exacta
-        for kw in qty_keywords:
-            if kw in cols_clean:
-                qty_col = cols_original[cols_clean.index(kw)]
-                break
-        
-        # Prioridad 2: Coincidencia parcial (subcadena)
-        if not qty_col:
+            # Buscar Qty
+            q_idx = -1
             for kw in qty_keywords:
-                for i, col_c in enumerate(cols_clean):
-                    if kw in col_c:
-                        qty_col = cols_original[i]
-                        break
-                if qty_col: break
-                
-        # 3. Heurísticas de respaldo si los nombres no coinciden
-        if not ref_col:
-            # Buscar columna con strings alfanuméricos
-            for col in df.columns:
-                if df[col].dtype == object:
-                    sample = df[col].dropna().head(10).astype(str)
-                    if sample.str.len().mean() > 3:
-                        ref_col = col
-                        break
+                for j, val in enumerate(row_clean):
+                    if kw == val:
+                        q_idx = j; break
+                if q_idx != -1: break
+            if q_idx == -1:
+                for kw in qty_keywords:
+                    for j, val in enumerate(row_clean):
+                        if kw in val:
+                            q_idx = j; break
+                    if q_idx != -1: break
+            
+            if r_idx != -1 and q_idx != -1:
+                ref_col_idx = r_idx
+                qty_col_idx = q_idx
+                header_row_idx = i
+                break
 
-        if not qty_col:
-            # Buscar columna numérica que no sea el índice ni la de referencia
-            for col in df.columns:
-                if col != ref_col and pd.api.types.is_numeric_dtype(df[col]):
-                    qty_col = col
+        # 2. Heurística de respaldo si no se encontró una fila con AMBAS cabeceras
+        if header_row_idx == -1:
+            # Intentar usar la primera fila como cabecera (comportamiento estándar) y usar heurísticas de contenido
+            df = pd.read_excel(file) # Volver a leer con pandas normal (o usar df_raw.iloc[0:] si es preferible)
+            # ... (usar lógica de detección anterior si la búsqueda manual falla)
+            # Pero para simplificar y asegurar robustez, vamos a forzar la detección por contenido si falla la cabecera
+            ref_col = None
+            qty_col = None
+            
+            # Buscar columna con strings alfanuméricos para referencia
+            for col_idx in range(len(df_raw.columns)):
+                sample = df_raw.iloc[:, col_idx].dropna().head(20).astype(str)
+                if sample.str.len().mean() > 3 and not any(kw in str(df_raw.iloc[0, col_idx]).lower() for kw in qty_keywords):
+                    ref_col_idx = col_idx
                     break
+            
+            # Buscar columna numérica para cantidad
+            for col_idx in range(len(df_raw.columns)):
+                if col_idx != ref_col_idx:
+                    col_data = pd.to_numeric(df_raw.iloc[1:, col_idx], errors='coerce')
+                    if col_data.notna().sum() > len(df_raw) / 3: # Si al menos 1/3 parece numérico
+                        qty_col_idx = col_idx
+                        break
+            
+            header_row_idx = 0 # Asumir que los datos empiezan después de la primera fila si no hay cabecera clara
 
-        if not ref_col:
+        if ref_col_idx is None:
             return jsonify({'error': 'No se pudo detectar la columna de referencia (ej: Referencia, Ref, Código...)'}), 400
 
-        # Limpiar datos
-        result_df = pd.DataFrame()
-        result_df['reference'] = df[ref_col].astype(str).str.strip()
+        # 3. Extraer y limpiar datos
+        df_data = df_raw.iloc[header_row_idx+1:].copy()
         
-        if qty_col:
-            result_df['quantity'] = pd.to_numeric(df[qty_col], errors='coerce').fillna(0)
+        result_df = pd.DataFrame()
+        result_df['reference'] = df_data.iloc[:, ref_col_idx].astype(str).str.strip()
+        
+        if qty_col_idx is not None:
+            result_df['quantity'] = pd.to_numeric(df_data.iloc[:, qty_col_idx], errors='coerce').fillna(0)
         else:
-            result_df['quantity'] = 1 # Por defecto si no hay columna de cantidad
+            result_df['quantity'] = 1
 
         result_df = result_df.dropna(subset=['reference'])
         result_df = result_df[result_df['reference'] != 'nan']
+        
+        # Filtrar filas de totales o resúmenes
+        result_df = result_df[~result_df['reference'].str.contains('TOTAL|GENERAL', case=False, na=False)]
         
         # Asegurar valores válidos para JSON
         result_df = result_df.replace([float('inf'), float('-inf')], 0)
