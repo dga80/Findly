@@ -150,29 +150,52 @@ def upload_file():
         ref_col = None
         qty_col = None
         
-        ref_keywords = ['referencia', 'ref', 'código', 'cod', 'articulo', 'item', 'part number', 'p/n']
-        qty_keywords = ['cantidad', 'cant', 'qty', 'units', 'uds', 'unidades', 'cantidad pedida']
+        # Listas de palabras clave (ordenadas por prioridad/especificidad)
+        ref_keywords = ['referencia', 'ref', 'código', 'codigo', 'cod', 'articulo', 'item', 'part number', 'p/n']
+        qty_keywords = ['cantidad', 'cant', 'qty', 'stock', 'units', 'uds', 'unid', 'unidad', 'unidades', 'cantidad pedida', 'disponible', 'resto']
         
-        # 1. Buscar por nombres de columnas (case insensitive)
-        cols_lower = [str(c).lower() for c in df.columns]
-        
+        # Limpiar nombres de columnas para comparación
+        cols_original = list(df.columns)
+        cols_clean = [str(c).lower().strip() for c in cols_original]
+
+        # 1. Buscar columna de REFERENCIA
+        # Prioridad 1: Coincidencia exacta
         for kw in ref_keywords:
-            if kw in cols_lower:
-                ref_col = df.columns[cols_lower.index(kw)]
+            if kw in cols_clean:
+                ref_col = cols_original[cols_clean.index(kw)]
                 break
         
-        for kw in qty_keywords:
-            if kw in cols_lower:
-                qty_col = df.columns[cols_lower.index(kw)]
-                break
-                
-        # 2. Si no se encuentran, buscar por contenido y patrones
+        # Prioridad 2: Coincidencia parcial (subcadena)
         if not ref_col:
-            # Buscar columna con strings alfanuméricos largos o con guiones
+            for kw in ref_keywords:
+                for i, col_c in enumerate(cols_clean):
+                    if kw in col_c:
+                        ref_col = cols_original[i]
+                        break
+                if ref_col: break
+
+        # 2. Buscar columna de CANTIDAD
+        # Prioridad 1: Coincidencia exacta
+        for kw in qty_keywords:
+            if kw in cols_clean:
+                qty_col = cols_original[cols_clean.index(kw)]
+                break
+        
+        # Prioridad 2: Coincidencia parcial (subcadena)
+        if not qty_col:
+            for kw in qty_keywords:
+                for i, col_c in enumerate(cols_clean):
+                    if kw in col_c:
+                        qty_col = cols_original[i]
+                        break
+                if qty_col: break
+                
+        # 3. Heurísticas de respaldo si los nombres no coinciden
+        if not ref_col:
+            # Buscar columna con strings alfanuméricos
             for col in df.columns:
                 if df[col].dtype == object:
                     sample = df[col].dropna().head(10).astype(str)
-                    # Si la mayoría parecen referencias (ej. longitud > 3, sin espacios excesivos)
                     if sample.str.len().mean() > 3:
                         ref_col = col
                         break
@@ -185,24 +208,21 @@ def upload_file():
                     break
 
         if not ref_col:
-            return jsonify({'error': 'No se pudo detectar la columna de referencia'}), 400
+            return jsonify({'error': 'No se pudo detectar la columna de referencia (ej: Referencia, Ref, Código...)'}), 400
 
         # Limpiar datos
-        result_df = df[[ref_col]].copy()
-        result_df.columns = ['reference']
+        result_df = pd.DataFrame()
+        result_df['reference'] = df[ref_col].astype(str).str.strip()
+        
         if qty_col:
-            result_df['quantity'] = df[qty_col]
+            result_df['quantity'] = pd.to_numeric(df[qty_col], errors='coerce').fillna(0)
         else:
-            result_df['quantity'] = 1 # Default if not found
+            result_df['quantity'] = 1 # Por defecto si no hay columna de cantidad
 
         result_df = result_df.dropna(subset=['reference'])
-        # Asegurar que reference sea string
-        result_df['reference'] = result_df['reference'].astype(str).str.strip()
+        result_df = result_df[result_df['reference'] != 'nan']
         
-        # Convertir quantity a numérico y reemplazar NaN/errores por 0
-        result_df['quantity'] = pd.to_numeric(result_df['quantity'], errors='coerce').fillna(0)
-        
-        # Asegurar que no haya valores NaN, inf o -inf en ninguna columna
+        # Asegurar valores válidos para JSON
         result_df = result_df.replace([float('inf'), float('-inf')], 0)
         result_df = result_df.fillna(0)
         
