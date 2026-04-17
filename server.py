@@ -13,9 +13,62 @@ PATH_STI = r"\\172.30.0.10\Logistica\06-ALMACENES\06.01-ALMACEN CERDANYA\STOCK\Z
 
 def read_inventario():
     try:
-        # Col A = Ubicación (index 0), Col B = Referencia (index 1), Col E = Cantidad (index 4)
-        df = pd.read_excel(PATH_INVENTARIO, usecols=[0, 1, 4])
-        df.columns = ['Ubicacion', 'Referencia', 'Cantidad']
+        # Detectar columnas dinámicamente por palabras clave
+        df_header = pd.read_excel(PATH_INVENTARIO, nrows=0)
+        
+        col_ref = None
+        col_qty = None
+        col_ubi = None
+        
+        ref_keywords = ['referencia', 'refencia', 'ref', 'codigo', 'código', 'artículo', 'cod']
+        qty_keywords = ['stock total', 'cantidad', 'stock', 'cant', 'uds', 'unid', 'unidades', 'recuento', 'rcto', 'total']
+        ubi_keywords = ['ubica', 'ubicacion', 'ubicación', 'ubi', 'posicion', 'pasillo']
+        
+        # 1. Búsqueda por coincidencia exacta
+        for col in df_header.columns:
+            col_lower = str(col).lower().strip()
+            if any(kw == col_lower for kw in ref_keywords): col_ref = col
+            if any(kw == col_lower for kw in ubi_keywords): col_ubi = col
+            if any(kw == col_lower for kw in qty_keywords): col_qty = col
+
+        # 2. Búsqueda por coincidencia parcial (solo si no se encontró exacta)
+        for col in df_header.columns:
+            col_lower = str(col).lower().strip()
+            if col_ref is None and any(kw in col_lower for kw in ref_keywords):
+                col_ref = col
+            if col_ubi is None and any(kw in col_lower for kw in ubi_keywords):
+                col_ubi = col
+            if col_qty is None and any(kw in col_lower for kw in qty_keywords):
+                # Evitar falsos positivos como 'fabricante' que contiene 'cant'
+                if 'fabricante' not in col_lower:
+                    col_qty = col
+
+        # Fallbacks si no se encuentran por nombre (usar índices probables)
+        if col_ref is None and len(df_header.columns) > 1: col_ref = df_header.columns[1]
+        if col_ubi is None:
+            if len(df_header.columns) > 3: col_ubi = df_header.columns[3]
+            elif len(df_header.columns) > 0: col_ubi = df_header.columns[0]
+        if col_qty is None:
+            if len(df_header.columns) > 4: col_qty = df_header.columns[4]
+            elif len(df_header.columns) > 2: col_qty = df_header.columns[2]
+
+        print(f"✓ Columnas Inventario: Ref='{col_ref}', Ubi='{col_ubi}', Cant='{col_qty}'")
+
+        cols_to_use = [c for c in [col_ubi, col_ref, col_qty] if c is not None]
+        df = pd.read_excel(PATH_INVENTARIO, usecols=cols_to_use)
+        
+        # Renombrar para consistencia en el backend
+        rename_map = {}
+        if col_ubi: rename_map[col_ubi] = 'Ubicacion'
+        if col_ref: rename_map[col_ref] = 'Referencia'
+        if col_qty: rename_map[col_qty] = 'Cantidad'
+        df = df.rename(columns=rename_map)
+        
+        # Asegurar que las columnas existan si falló algo
+        if 'Referencia' not in df.columns: df['Referencia'] = ''
+        if 'Ubicacion' not in df.columns: df['Ubicacion'] = ''
+        if 'Cantidad' not in df.columns: df['Cantidad'] = 0
+
         df = df.dropna(subset=['Referencia'])
         
         # Limpiar valores NaN para evitar errores de JSON
@@ -26,6 +79,8 @@ def read_inventario():
         return df
     except Exception as e:
         print(f"Error reading Inventario: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame(columns=['Ubicacion', 'Referencia', 'Cantidad'])
 
 def read_sonepar():
